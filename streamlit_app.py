@@ -48,8 +48,8 @@ def load_data(segments_path, sensor_data_path):
 # --- Chemins vers vos fichiers CSV ---
 # !! Important : Adaptez ces chemins si nécessaire !!
 # Par défaut, cherche les fichiers dans le même dossier que le script :
-SEGMENTS_CSV_PATH = 'data/segments.csv'
-SENSOR_CSV_PATH = 'data/sensor_data.csv'
+SEGMENTS_CSV_PATH = 'segments.csv'
+SENSOR_CSV_PATH = 'sensor_data.csv'
 
 segments_df, sensor_df = load_data(SEGMENTS_CSV_PATH, SENSOR_CSV_PATH)
 
