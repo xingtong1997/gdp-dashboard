@@ -9,7 +9,7 @@ import traceback # Pour afficher les erreurs de parsing détaillées
 
 # --- Configuration de la Page ---
 st.set_page_config(
-    page_title="Dashboard Analyse Trottoirs",
+    page_title="Walkability Analysis Dashboard",
     page_icon="🚶",
     layout="wide"
 )
@@ -75,7 +75,7 @@ def load_data(path_data_path, sensor_data_path):
         path_df['coordinates_str'] = path_df['coordinates_str'].fillna('')
 
 
-        st.write("Parsing des coordonnées des segments...") # Feedback pour l'utilisateur
+        st.write("Parsing segments coordinates...") # Feedback pour l'utilisateur
 
         # Appliquer la fonction de parsing
         # Note: parse_and_convert_coordinates retourne [] en cas d'erreur
@@ -106,7 +106,7 @@ def load_data(path_data_path, sensor_data_path):
         num_empty_original = original_rows - len(path_df[path_df['coordinates_str'].str.strip() != ''])
         num_successfully_parsed = len(processed_path_df)
 
-        st.write(f"Parsing terminé: {num_successfully_parsed} segments chargés avec succès.")
+        st.write(f"Parsing finished: {num_successfully_parsed} segments loaded successfully.")
         if num_failed > 0:
              st.warning(f"{num_failed} segments ignorés en raison d'erreurs de parsing.")
         # if num_empty_original > 0:
@@ -142,22 +142,22 @@ SENSOR_CSV_PATH = 'sensor_data.csv' # Fichier optionnel avec données temporelle
 path_df, sensor_df = load_data(PATH_CSV_PATH, SENSOR_CSV_PATH)
 
 # --- Interface Utilisateur ---
-st.title("📊 Dashboard d'Analyse des Trottoirs")
-st.markdown("Visualisation des données collectées par le robot sur l'état des trottoirs.")
+st.title("📊 Walkability analysis dashboard")
+st.markdown("Data visualization of sidewalk state and caracteristics")
 
 if path_df.empty:
     st.warning("Impossible d'afficher la carte car les données du chemin n'ont pas pu être chargées ou parsées.")
     st.stop()
 
 # --- Sélection du Segment ---
-segment_options = ["Vue Générale"] + sorted(path_df['segment_id'].unique().tolist())
+segment_options = ["Vue Générale"] + sorted(path_df['segment_id'].astype(int).unique().tolist())
 selected_segment_id = st.sidebar.selectbox("Sélectionnez un Segment :", options=segment_options)
 
 # --- Affichage Principal (Carte et Données) ---
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    st.subheader("🗺️ Carte du Parcours")
+    st.subheader("🗺️ Robot's path map")
 
     m = folium.Map(location=[48.8566, 2.3522], zoom_start=12) # Centre/zoom par défaut
 
@@ -197,7 +197,7 @@ with col1:
 
             if len(locations) >= 2: # Besoin d'au moins 2 points pour une ligne
                 line_color = "#FF0000" if segment_id == selected_segment_id else "#007bff"
-                line_weight = 5 if segment_id == selected_segment_id else 3
+                line_weight = 10 if segment_id == selected_segment_id else 6
 
                 folium.PolyLine(
                     locations=locations, # Utilise directement la liste de (lat, lon)
@@ -217,19 +217,19 @@ with col1:
     map_data = st_folium(m, width='100%', height=500)
 
 with col2:
-    st.subheader("🔍 Détails du Segment")
+    st.subheader("🔍 Segment's details")
 
     if selected_segment_id == "Vue Générale" or selected_segment_id is None:
-        st.info("Sélectionnez un segment dans la liste à gauche pour afficher ses détails.")
+        st.info("Select a segment in the drop-down menu on the left to display details.")
         # ... (code pour statistiques globales inchangé, peut nécessiter sensor_df) ...
         st.markdown("---")
-        st.subheader("Statistiques Globales")
+        st.subheader("Global statistics")
         if not sensor_df.empty:
-             st.metric("Nombre total de segments", path_df['segment_id'].nunique())
+             st.metric("Number of segments", path_df['segment_id'].nunique())
              if 'current_width' in sensor_df.columns:
-                 st.metric("Largeur moyenne globale (m)", f"{sensor_df['current_width'].mean():.2f}")
+                 st.metric("Sidewalk mean width (m)", f"{sensor_df['current_width'].mean():.2f}")
              if 'irregularity_value' in sensor_df.columns:
-                 st.metric("Irrégularité max rencontrée", f"{sensor_df['irregularity_value'].max():.2f}")
+                 st.metric("Max number of irregularities in one segment", f"{sensor_df['irregularity_value'].max():.2f}")
         else:
              st.metric("Nombre total de segments", path_df['segment_id'].nunique())
              st.warning("Données capteurs ('sensor_data.csv') non disponibles pour statistiques globales détaillées.")
@@ -248,13 +248,13 @@ with col2:
             col_metric1, col_metric2 = st.columns(2)
             with col_metric1:
                 metric_val = segment_data['current_width'].mean()
-                st.metric("Largeur Moyenne (m)", f"{metric_val:.2f}" if pd.notna(metric_val) else "N/A")
+                st.metric("Mean width (m)", f"{metric_val:.2f}" if pd.notna(metric_val) else "N/A")
             with col_metric2:
                 metric_val = segment_data['irregularity_value'].max()
-                st.metric("Irrégularité Max", f"{metric_val:.2f}" if pd.notna(metric_val) else "N/A")
+                st.metric("Max irregularity", f"{metric_val:.2f}" if pd.notna(metric_val) else "N/A")
 
             st.markdown("---")
-            st.markdown("**Graphiques des Données Temporelles**")
+            st.markdown("**Temporal data charts :**")
 
             # Graphique : Irrégularité
             if 'irregularity_value' in segment_data.columns and segment_data['irregularity_value'].notna().any():
