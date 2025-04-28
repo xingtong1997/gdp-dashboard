@@ -75,7 +75,7 @@ def load_data(path_data_path, sensor_data_path):
         path_df['coordinates_str'] = path_df['coordinates_str'].fillna('')
 
 
-        st.write("Parsing segments coordinates...") # Feedback pour l'utilisateur
+        #st.write("Parsing segments coordinates...") # Feedback pour l'utilisateur
 
         # Appliquer la fonction de parsing
         # Note: parse_and_convert_coordinates retourne [] en cas d'erreur
@@ -106,7 +106,7 @@ def load_data(path_data_path, sensor_data_path):
         num_empty_original = original_rows - len(path_df[path_df['coordinates_str'].str.strip() != ''])
         num_successfully_parsed = len(processed_path_df)
 
-        st.write(f"Parsing finished: {num_successfully_parsed} segments loaded successfully.")
+        #st.write(f"Parsing finished: {num_successfully_parsed} segments loaded successfully.")
         if num_failed > 0:
              st.warning(f"{num_failed} segments ignorés en raison d'erreurs de parsing.")
         # if num_empty_original > 0:
@@ -168,153 +168,166 @@ def robust_num_key(item_str):
 # Trier les IDs (qui sont des strings) en utilisant la clé numérique
 sorted_ids = sorted(unique_ids_str, key=robust_num_key)
 
-# Créer les options pour le selectbox
-segment_options = ["Overview"] + sorted_ids # Utilise la liste triée numériquement
+#création des deux onglets, le premier étant context et le deuxième celu qui va générer les données
+tab1, tab2 = st.tabs(["Context", "Data"])
 
-selected_segment_id = st.sidebar.selectbox("Sélectionnez un Segment :", options=segment_options)
 
-# --- Affichage Principal (Carte et Données) ---
-col1, col2 = st.columns([2, 1])
+#onglet d'affichage du contexte
+with tab1 :
+    st.subheader("🗺️ Context and Details about the project")
 
-with col1:
-    st.subheader("🗺️ Robot's path map")
+#Onglets d'affichage des données
+with tab2 :
 
-    m = folium.Map(location=[48.8566, 2.3522], zoom_start=12) # Centre/zoom par défaut
+    # Créer les options pour le selectbox
+    segment_options = ["Overview"] + sorted_ids # Utilise la liste triée numériquement
 
-    # Ajuster la vue initiale aux limites de tous les points
-    if not path_df.empty:
-        all_lats = []
-        all_lons = []
-        # Itérer sur la colonne 'locations' qui contient des listes de (lat, lon)
-        for loc_list in path_df['locations']:
-            if loc_list: # Vérifier si la liste n'est pas vide
-                 # Extraire les latitudes et longitudes de chaque tuple dans la liste
-                 all_lats.extend([point[0] for point in loc_list]) # point[0] est la latitude
-                 all_lons.extend([point[1] for point in loc_list]) # point[1] est la longitude
+    selected_segment_id = st.selectbox("Sélectionnez un Segment :", options=segment_options)
 
-        if all_lats and all_lons: # S'assurer qu'on a collecté des points
-            min_lat, max_lat = min(all_lats), max(all_lats)
-            min_lon, max_lon = min(all_lons), max(all_lons)
+    # --- Affichage Principal (Carte et Données) ---
+    col1, col2 = st.columns([2, 1])
 
-            if min_lat != max_lat or min_lon != max_lon:
-                 bounds = [[min_lat, min_lon], [max_lat, max_lon]]
-                 m.fit_bounds(bounds, padding=(0.01, 0.01))
+    with col1:
+
+        
+        st.subheader("🗺️ Robot's path map")
+
+        m = folium.Map(location=[48.8566, 2.3522], zoom_start=12) # Centre/zoom par défaut
+
+        # Ajuster la vue initiale aux limites de tous les points
+        if not path_df.empty:
+            all_lats = []
+            all_lons = []
+            # Itérer sur la colonne 'locations' qui contient des listes de (lat, lon)
+            for loc_list in path_df['locations']:
+                if loc_list: # Vérifier si la liste n'est pas vide
+                    # Extraire les latitudes et longitudes de chaque tuple dans la liste
+                    all_lats.extend([point[0] for point in loc_list]) # point[0] est la latitude
+                    all_lons.extend([point[1] for point in loc_list]) # point[1] est la longitude
+
+            if all_lats and all_lons: # S'assurer qu'on a collecté des points
+                min_lat, max_lat = min(all_lats), max(all_lats)
+                min_lon, max_lon = min(all_lons), max(all_lons)
+
+                if min_lat != max_lat or min_lon != max_lon:
+                    bounds = [[min_lat, min_lon], [max_lat, max_lon]]
+                    m.fit_bounds(bounds, padding=(0.01, 0.01))
+                else:
+                    m.location = [min_lat, min_lon]
+                    m.zoom_start = 16
             else:
-                 m.location = [min_lat, min_lon]
-                 m.zoom_start = 16
+                st.warning("Impossible de calculer les limites géographiques (pas de coordonnées valides après parsing).")
         else:
-            st.warning("Impossible de calculer les limites géographiques (pas de coordonnées valides après parsing).")
-    else:
-         st.warning("Données de chemin vides pour ajuster automatiquement la carte.")
+            st.warning("Données de chemin vides pour ajuster automatiquement la carte.")
 
 
-    # Afficher tous les segments sur la carte
-    if not path_df.empty:
-        # Itérer sur les lignes du DataFrame traité
-        for index, segment_row in path_df.iterrows():
-            segment_id = segment_row['segment_id']
-            locations = segment_row['locations'] # Récupère la liste de (lat, lon)
+        # Afficher tous les segments sur la carte
+        if not path_df.empty:
+            # Itérer sur les lignes du DataFrame traité
+            for index, segment_row in path_df.iterrows():
+                segment_id = segment_row['segment_id']
+                locations = segment_row['locations'] # Récupère la liste de (lat, lon)
 
-            if len(locations) >= 2: # Besoin d'au moins 2 points pour une ligne
-                line_color = "#FF0000" if segment_id == selected_segment_id else "#007bff"
-                line_weight = 10 if segment_id == selected_segment_id else 6
+                if len(locations) >= 2: # Besoin d'au moins 2 points pour une ligne
+                    line_color = "#FF0000" if segment_id == selected_segment_id else "#007bff"
+                    line_weight = 10 if segment_id == selected_segment_id else 6
 
-                folium.PolyLine(
-                    locations=locations, # Utilise directement la liste de (lat, lon)
-                    color=line_color,
-                    weight=line_weight,
-                    opacity=0.8,
-                    tooltip=f"Segment ID: {segment_id}"
-                ).add_to(m)
-            elif len(locations) == 1:
-                 folium.Marker(
-                      location=locations[0],
-                      tooltip=f"Segment ID: {segment_id} (point unique)",
-                      icon=folium.Icon(color='gray', icon='info-sign')
-                 ).add_to(m)
+                    folium.PolyLine(
+                        locations=locations, # Utilise directement la liste de (lat, lon)
+                        color=line_color,
+                        weight=line_weight,
+                        opacity=0.8,
+                        tooltip=f"Segment ID: {segment_id}"
+                    ).add_to(m)
+                elif len(locations) == 1:
+                    folium.Marker(
+                        location=locations[0],
+                        tooltip=f"Segment ID: {segment_id} (point unique)",
+                        icon=folium.Icon(color='gray', icon='info-sign')
+                    ).add_to(m)
 
-    # Afficher la carte
-    map_data = st_folium(m, width='100%', height=500)
+        # Afficher la carte
+        map_data = st_folium(m, width='100%', height=500)
 
-with col2:
-    st.subheader("🔍 Segment's details")
+    with col2:
+        st.subheader("🔍 Segment's details")
 
-    if selected_segment_id == "Overview" or selected_segment_id is None:
-        st.info("Select a segment in the drop-down menu on the left to display details.")
-        # ... (code pour statistiques globales inchangé, peut nécessiter sensor_df) ...
-        st.markdown("---")
-        st.subheader("Global statistics")
-        if not sensor_df.empty:
-             st.metric("Number of segments", path_df['segment_id'].nunique())
-             if 'current_width' in sensor_df.columns:
-                 st.metric("Sidewalk mean width (m)", f"{sensor_df['current_width'].mean():.2f}")
-             if 'irregularity_value' in sensor_df.columns:
-                 st.metric("Max number of irregularities in one segment", f"{sensor_df['irregularity_value'].max():.2f}")
-        else:
-             st.metric("Nombre total de segments", path_df['segment_id'].nunique())
-             st.warning("Données capteurs ('sensor_data.csv') non disponibles pour statistiques globales détaillées.")
-
-    # Le reste de la logique pour afficher les détails (graphiques, etc.)
-    # reste basé sur sensor_df et selected_segment_id.
-    # Il faut s'assurer que le fichier sensor_data.csv existe et
-    # contient une colonne 'segment_id' qui correspond aux IDs dans segments.csv
-
-    elif not sensor_df.empty:
-        segment_data = sensor_df[sensor_df['segment_id'] == selected_segment_id].copy()
-
-        if not segment_data.empty:
-            st.markdown(f"**Segment ID : {selected_segment_id}**")
-            # ... (affichage des métriques et graphiques basé sur segment_data) ...
-            col_metric1, col_metric2 = st.columns(2)
-            with col_metric1:
-                metric_val = segment_data['current_width'].mean()
-                st.metric("Mean width (m)", f"{metric_val:.2f}" if pd.notna(metric_val) else "N/A")
-            with col_metric2:
-                metric_val = segment_data['irregularity_value'].max()
-                st.metric("Max irregularity", f"{metric_val:.2f}" if pd.notna(metric_val) else "N/A")
-
+        if selected_segment_id == "Overview" or selected_segment_id is None:
+            st.info("Select a segment in the drop-down menu on the left to display details.")
+            # ... (code pour statistiques globales inchangé, peut nécessiter sensor_df) ...
             st.markdown("---")
-            st.markdown("**Temporal data charts :**")
+            st.subheader("Global statistics")
+            if not sensor_df.empty:
+                st.metric("Number of segments", path_df['segment_id'].nunique())
+                if 'current_width' in sensor_df.columns:
+                    st.metric("Sidewalk mean width (m)", f"{sensor_df['current_width'].mean():.2f}")
+                if 'irregularity_value' in sensor_df.columns:
+                    st.metric("Max number of irregularities in one segment", f"{sensor_df['irregularity_value'].max():.2f}")
+            else:
+                st.metric("Nombre total de segments", path_df['segment_id'].nunique())
+                st.warning("Données capteurs ('sensor_data.csv') non disponibles pour statistiques globales détaillées.")
 
-            # Graphique : Irrégularité
-            if 'irregularity_value' in segment_data.columns and segment_data['irregularity_value'].notna().any():
-                fig_irreg = px.line(segment_data.sort_values('timestamp'), x='timestamp', y='irregularity_value', title='Irregularity evolution', labels={'timestamp': 'Time', 'irregularity_value': 'Irregularity'})
-                fig_irreg.update_layout(xaxis_title=None, yaxis_title="irregularity")
-                st.plotly_chart(fig_irreg, use_container_width=True)
+        # Le reste de la logique pour afficher les détails (graphiques, etc.)
+        # reste basé sur sensor_df et selected_segment_id.
+        # Il faut s'assurer que le fichier sensor_data.csv existe et
+        # contient une colonne 'segment_id' qui correspond aux IDs dans segments.csv
 
-            # Graphique : Largeur
-            if 'current_width' in segment_data.columns and segment_data['current_width'].notna().any():
-                fig_width = px.line(segment_data.sort_values('timestamp'), x='timestamp', y='current_width', title='Width evolution', labels={'timestamp': 'Temps', 'current_width': 'Width (m)'})
-                fig_width.update_layout(xaxis_title=None, yaxis_title="Width (m)")
-                st.plotly_chart(fig_width, use_container_width=True)
+        elif not sensor_df.empty:
+            segment_data = sensor_df[sensor_df['segment_id'] == selected_segment_id].copy()
 
-            # Graphique : Passants
-            if 'pedestrian_detected' in segment_data.columns and segment_data['pedestrian_detected'].notna().any():
-                 segment_data['pedestrian_detected'] = segment_data['pedestrian_detected'].astype(int)
-                 if segment_data['pedestrian_detected'].sum() > 0:
-                    pedestrian_summary = segment_data.resample('T', on='timestamp')['pedestrian_detected'].sum().reset_index(name='detections')
-                    pedestrian_summary = pedestrian_summary[pedestrian_summary['detections'] > 0]
-                    fig_ped = px.bar(pedestrian_summary, x='timestamp', y='detections', title='Pedestrians detection per minute')
-                    fig_ped.update_layout(xaxis_title=None, yaxis_title="Number of detection")
-                    st.plotly_chart(fig_ped, use_container_width=True)
-                 else:
-                     st.markdown("*Aucun passant détecté sur ce segment.*")
+            if not segment_data.empty:
+                st.markdown(f"**Segment ID : {selected_segment_id}**")
+                # ... (affichage des métriques et graphiques basé sur segment_data) ...
+                col_metric1, col_metric2 = st.columns(2)
+                with col_metric1:
+                    metric_val = segment_data['current_width'].mean()
+                    st.metric("Mean width (m)", f"{metric_val:.2f}" if pd.notna(metric_val) else "N/A")
+                with col_metric2:
+                    metric_val = segment_data['irregularity_value'].max()
+                    st.metric("Max irregularity", f"{metric_val:.2f}" if pd.notna(metric_val) else "N/A")
 
-            # Données brutes
-            st.markdown("---")
-            st.markdown("**Raw data**")
-            st.dataframe(segment_data.head())
+                st.markdown("---")
+                st.markdown("**Temporal data charts :**")
+
+                # Graphique : Irrégularité
+                if 'irregularity_value' in segment_data.columns and segment_data['irregularity_value'].notna().any():
+                    fig_irreg = px.line(segment_data.sort_values('timestamp'), x='timestamp', y='irregularity_value', title='Irregularity evolution', labels={'timestamp': 'Time', 'irregularity_value': 'Irregularity'})
+                    fig_irreg.update_layout(xaxis_title=None, yaxis_title="irregularity")
+                    st.plotly_chart(fig_irreg, use_container_width=True)
+
+                # Graphique : Largeur
+                if 'current_width' in segment_data.columns and segment_data['current_width'].notna().any():
+                    fig_width = px.line(segment_data.sort_values('timestamp'), x='timestamp', y='current_width', title='Width evolution', labels={'timestamp': 'Temps', 'current_width': 'Width (m)'})
+                    fig_width.update_layout(xaxis_title=None, yaxis_title="Width (m)")
+                    st.plotly_chart(fig_width, use_container_width=True)
+
+                # Graphique : Passants
+                if 'pedestrian_detected' in segment_data.columns and segment_data['pedestrian_detected'].notna().any():
+                    segment_data['pedestrian_detected'] = segment_data['pedestrian_detected'].astype(int)
+                    if segment_data['pedestrian_detected'].sum() > 0:
+                        pedestrian_summary = segment_data.resample('T', on='timestamp')['pedestrian_detected'].sum().reset_index(name='detections')
+                        pedestrian_summary = pedestrian_summary[pedestrian_summary['detections'] > 0]
+                        fig_ped = px.bar(pedestrian_summary, x='timestamp', y='detections', title='Pedestrians detection per minute')
+                        fig_ped.update_layout(xaxis_title=None, yaxis_title="Number of detection")
+                        st.plotly_chart(fig_ped, use_container_width=True)
+                    else:
+                        st.markdown("*Aucun passant détecté sur ce segment.*")
+
+                # Données brutes
+                st.markdown("---")
+                st.markdown("**Raw data**")
+                st.dataframe(segment_data.head())
+
+            else:
+                st.markdown(f"**Segment ID : {selected_segment_id}**")
+                st.info(f"Aucune donnée détaillée (capteurs) trouvée pour le segment {selected_segment_id} dans '{SENSOR_CSV_PATH}'.")
+                # Afficher les points du chemin pour référence
+                segment_path_row = path_df[path_df['segment_id'] == selected_segment_id].iloc[0]
+                if segment_path_row is not None and segment_path_row['locations']:
+                    st.markdown("**Points du chemin (Lat, Lon) pour ce segment :**")
+                    # Afficher les points sous forme de DataFrame pour la clarté
+                    points_df = pd.DataFrame(segment_path_row['locations'], columns=['Latitude', 'Longitude'])
+                    st.dataframe(points_df)
 
         else:
-            st.markdown(f"**Segment ID : {selected_segment_id}**")
-            st.info(f"Aucune donnée détaillée (capteurs) trouvée pour le segment {selected_segment_id} dans '{SENSOR_CSV_PATH}'.")
-            # Afficher les points du chemin pour référence
-            segment_path_row = path_df[path_df['segment_id'] == selected_segment_id].iloc[0]
-            if segment_path_row is not None and segment_path_row['locations']:
-                 st.markdown("**Points du chemin (Lat, Lon) pour ce segment :**")
-                 # Afficher les points sous forme de DataFrame pour la clarté
-                 points_df = pd.DataFrame(segment_path_row['locations'], columns=['Latitude', 'Longitude'])
-                 st.dataframe(points_df)
-
-    else:
-         st.warning(f"Le fichier de données capteurs '{SENSOR_CSV_PATH}' est vide ou n'a pas pu être chargé. Impossible d'afficher les détails du segment.")
+            st.warning(f"Le fichier de données capteurs '{SENSOR_CSV_PATH}' est vide ou n'a pas pu être chargé. Impossible d'afficher les détails du segment.")
