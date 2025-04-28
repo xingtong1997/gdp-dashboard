@@ -150,7 +150,27 @@ if path_df.empty:
     st.stop()
 
 # --- Sélection du Segment ---
-segment_options = ["Vue Générale"] + sorted(path_df['segment_id'].astype(int).unique().tolist())
+# Les IDs sont maintenant bien des strings grâce à la correction dans load_data
+unique_ids_str = path_df['segment_id'].unique().tolist()
+
+# Définir une fonction clé pour trier numériquement (gère entiers et potentiellement flottants)
+def robust_num_key(item_str):
+    try:
+        # Essayer de convertir en flottant pour la comparaison (gère entiers et décimaux)
+        return float(item_str)
+    except ValueError:
+        # Si ce n'est pas un nombre, le placer à la fin lors du tri
+        # On retourne l'infini positif pour qu'il soit classé après tous les nombres.
+        # Vous pourriez aussi retourner une valeur spécifique ou lever une erreur si
+        # tous les IDs sont censés être numériques.
+        return float('inf')
+
+# Trier les IDs (qui sont des strings) en utilisant la clé numérique
+sorted_ids = sorted(unique_ids_str, key=robust_num_key)
+
+# Créer les options pour le selectbox
+segment_options = ["Overview"] + sorted_ids # Utilise la liste triée numériquement
+
 selected_segment_id = st.sidebar.selectbox("Sélectionnez un Segment :", options=segment_options)
 
 # --- Affichage Principal (Carte et Données) ---
@@ -219,7 +239,7 @@ with col1:
 with col2:
     st.subheader("🔍 Segment's details")
 
-    if selected_segment_id == "Vue Générale" or selected_segment_id is None:
+    if selected_segment_id == "Overview" or selected_segment_id is None:
         st.info("Select a segment in the drop-down menu on the left to display details.")
         # ... (code pour statistiques globales inchangé, peut nécessiter sensor_df) ...
         st.markdown("---")
@@ -258,14 +278,14 @@ with col2:
 
             # Graphique : Irrégularité
             if 'irregularity_value' in segment_data.columns and segment_data['irregularity_value'].notna().any():
-                fig_irreg = px.line(segment_data.sort_values('timestamp'), x='timestamp', y='irregularity_value', title='Evolution de l\'irrégularité', labels={'timestamp': 'Temps', 'irregularity_value': 'Indice d\'irrégularité'})
-                fig_irreg.update_layout(xaxis_title=None, yaxis_title="Irrégularité")
+                fig_irreg = px.line(segment_data.sort_values('timestamp'), x='timestamp', y='irregularity_value', title='Irregularity evolution', labels={'timestamp': 'Time', 'irregularity_value': 'Irregularity'})
+                fig_irreg.update_layout(xaxis_title=None, yaxis_title="irregularity")
                 st.plotly_chart(fig_irreg, use_container_width=True)
 
             # Graphique : Largeur
             if 'current_width' in segment_data.columns and segment_data['current_width'].notna().any():
-                fig_width = px.line(segment_data.sort_values('timestamp'), x='timestamp', y='current_width', title='Evolution de la largeur', labels={'timestamp': 'Temps', 'current_width': 'Largeur (m)'})
-                fig_width.update_layout(xaxis_title=None, yaxis_title="Largeur (m)")
+                fig_width = px.line(segment_data.sort_values('timestamp'), x='timestamp', y='current_width', title='Width evolution', labels={'timestamp': 'Temps', 'current_width': 'Width (m)'})
+                fig_width.update_layout(xaxis_title=None, yaxis_title="Width (m)")
                 st.plotly_chart(fig_width, use_container_width=True)
 
             # Graphique : Passants
@@ -274,15 +294,15 @@ with col2:
                  if segment_data['pedestrian_detected'].sum() > 0:
                     pedestrian_summary = segment_data.resample('T', on='timestamp')['pedestrian_detected'].sum().reset_index(name='detections')
                     pedestrian_summary = pedestrian_summary[pedestrian_summary['detections'] > 0]
-                    fig_ped = px.bar(pedestrian_summary, x='timestamp', y='detections', title='Détections de passants par minute')
-                    fig_ped.update_layout(xaxis_title=None, yaxis_title="Nb Détections")
+                    fig_ped = px.bar(pedestrian_summary, x='timestamp', y='detections', title='Pedestrians detection per minute')
+                    fig_ped.update_layout(xaxis_title=None, yaxis_title="Number of detection")
                     st.plotly_chart(fig_ped, use_container_width=True)
                  else:
                      st.markdown("*Aucun passant détecté sur ce segment.*")
 
             # Données brutes
             st.markdown("---")
-            st.markdown("**Données Brutes (échantillon)**")
+            st.markdown("**Raw data**")
             st.dataframe(segment_data.head())
 
         else:
