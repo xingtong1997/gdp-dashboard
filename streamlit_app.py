@@ -179,17 +179,26 @@ with tab1 :
 #Onglets d'affichage des données
 with tab2 :
 
-    # Créer les options pour le selectbox
-    segment_options = ["Overview"] + sorted_ids # Utilise la liste triée numériquement
-
-    selected_segment_id = st.selectbox("Sélectionnez un Segment :", options=segment_options)
+    
 
     # --- Affichage Principal (Carte et Données) ---
     col1, col2 = st.columns([2, 1])
 
     with col1:
 
+        col3, col4 = st.columns([2, 1], vertical_alignment="center")
+
+        with col3:
+
+            # Créer les options pour le selectbox
+            segment_options = ["Overview"] + sorted_ids # Utilise la liste triée numériquement
+
+            selected_segment_id = st.selectbox("Sélectionnez un Segment :", options=segment_options)
         
+        with col4:
+
+            test = st.pills("TEST", "Dispy segments number", label_visibility="hidden")
+
         st.subheader("🗺️ Robot's path map")
 
         m = folium.Map(location=[48.8566, 2.3522], zoom_start=12) # Centre/zoom par défaut
@@ -231,7 +240,7 @@ with tab2 :
                 if len(locations) >= 2: # Besoin d'au moins 2 points pour une ligne
                     line_color = "#FF0000" if segment_id == selected_segment_id else "#007bff"
                     line_weight = 10 if segment_id == selected_segment_id else 6
-                    if selected_segment_id == "Overview":
+                    if test == "Display segments number":
                         folium.PolyLine(
                             locations=locations, # Utilise directement la liste de (lat, lon)
                             color=line_color,
