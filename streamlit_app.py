@@ -231,14 +231,32 @@ with tab2 :
                 if len(locations) >= 2: # Besoin d'au moins 2 points pour une ligne
                     line_color = "#FF0000" if segment_id == selected_segment_id else "#007bff"
                     line_weight = 10 if segment_id == selected_segment_id else 6
-
-                    folium.PolyLine(
-                        locations=locations, # Utilise directement la liste de (lat, lon)
-                        color=line_color,
-                        weight=line_weight,
-                        opacity=0.8,
-                        tooltip=f"Segment ID: {segment_id}"
-                    ).add_to(m)
+                    if selected_segment_id == "Overview":
+                        folium.PolyLine(
+                            locations=locations, # Utilise directement la liste de (lat, lon)
+                            color=line_color,
+                            weight=line_weight,
+                            opacity=0.8,
+                            # Remplacer le tooltip simple par un Tooltip permanent
+                            tooltip=folium.Tooltip(
+                                f"{segment_id}", # Affiche juste l'ID
+                                permanent=True,   # Rend le tooltip toujours visible
+                                direction='center', # Essaye de le centrer (autres options: 'auto', 'top', 'bottom', 'left', 'right')
+                                sticky=False,     # Empêche le tooltip de suivre la souris
+                                opacity=0.7,      # Un peu transparent pour ne pas masquer la ligne
+                                # Optionnel: classe CSS pour styler plus tard
+                                # className='folium-permanent-tooltip'
+                            )
+                        ).add_to(m)
+                    else : 
+                        folium.PolyLine(
+                            locations=locations, # Utilise directement la liste de (lat, lon)
+                            color=line_color,
+                            weight=line_weight,
+                            opacity=0.8,
+                            tooltip=f"Segment ID: {segment_id}"
+                        ).add_to(m)
+                        
                 elif len(locations) == 1:
                     folium.Marker(
                         location=locations[0],
