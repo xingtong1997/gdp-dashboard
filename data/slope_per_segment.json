@@ -1,0 +1,38 @@
+[
+  {
+    "segment id": 1,
+    "absolute slope": 0.015
+  },
+  {
+    "segment id": 2,
+    "absolute slope": 0.015
+  },
+  {
+    "segment id": 3,
+    "absolute slope": 0.025
+  },
+  {
+    "segment id": 4,
+    "absolute slope": 0.03
+  },
+  {
+    "segment id": 5,
+    "absolute slope": 0.047
+  },
+  {
+    "segment id": 6,
+    "absolute slope": 0.058
+  },
+  {
+    "segment id": 7,
+    "absolute slope": 0.062
+  },
+  {
+    "segment id": 8,
+    "absolute slope": 0.033
+  },
+  {
+    "segment id": 9,
+    "absolute slope": 0.027
+  }
+]

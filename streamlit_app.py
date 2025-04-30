@@ -6,6 +6,12 @@ import plotly.express as px
 import os
 import ast # Pour parser la chaîne de liste de tuples en toute sécurité
 import traceback # Pour afficher les erreurs de parsing détaillées
+import json
+
+#importation des fichiers de données json
+with open("data/irr_event_coordinates.json", mode="r", encoding="utf-8") as irr_event_coordinates:
+    irr_event_coordinates = json.load(irr_event_coordinates)
+
 
 # --- Configuration de la Page ---
 st.set_page_config(
@@ -136,8 +142,8 @@ def load_data(path_data_path, sensor_data_path):
     return processed_path_df, sensor_df
 
 # --- Chemins vers vos fichiers CSV ---
-PATH_CSV_PATH = 'segments.csv' # Votre fichier avec id, "[(lon, lat),...]"
-SENSOR_CSV_PATH = 'sensor_data.csv' # Fichier optionnel avec données temporelles
+PATH_CSV_PATH = 'data/segments.csv' # Votre fichier avec id, "[(lon, lat),...]"
+SENSOR_CSV_PATH = 'data/sensor_data.csv' # Fichier optionnel avec données temporelles
 
 path_df, sensor_df = load_data(PATH_CSV_PATH, SENSOR_CSV_PATH)
 
@@ -274,7 +280,7 @@ with tab2 :
                     ).add_to(m)
 
         # Afficher la carte
-        map_data = st_folium(m, width='100%', height=500)
+        map_data = st_folium(m, width=500, height=500)
 
     with col2:
         st.subheader("🔍 Segment's details")

@@ -1,0 +1,47 @@
+[
+  {
+    "segment id": 1,
+    "average pedestrian density": 0.0741578947368421,
+    "maximum pedestrian density": 0.20231578947368425
+  },
+  {
+    "segment id": 2,
+    "average pedestrian density": 0.09110526315789474,
+    "maximum pedestrian density": 0.22957894736842102
+  },
+  {
+    "segment id": 3,
+    "average pedestrian density": 0.06283,
+    "maximum pedestrian density": 0.16030999999999998
+  },
+  {
+    "segment id": 4,
+    "average pedestrian density": 0.06719354838709678,
+    "maximum pedestrian density": 0.16386021505376344
+  },
+  {
+    "segment id": 5,
+    "average pedestrian density": 0.055200000000000006,
+    "maximum pedestrian density": 0.14362500000000003
+  },
+  {
+    "segment id": 6,
+    "average pedestrian density": 0.10818518518518519,
+    "maximum pedestrian density": 0.20508641975308645
+  },
+  {
+    "segment id": 7,
+    "average pedestrian density": 0.03132911392405063,
+    "maximum pedestrian density": 0.12716455696202533
+  },
+  {
+    "segment id": 8,
+    "average pedestrian density": 0.019134146341463418,
+    "maximum pedestrian density": 0.046804878048780495
+  },
+  {
+    "segment id": 9,
+    "average pedestrian density": 0.03518072289156627,
+    "maximum pedestrian density": 0.0822289156626506
+  }
+]

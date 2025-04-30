@@ -1,0 +1,47 @@
+[
+  {
+    "segment id": 1,
+    "average unevenness index": 0.7515026213121644,
+    "average irregularity index": 11.63489469883059
+  },
+  {
+    "segment id": 2,
+    "average unevenness index": 0.6595233097642447,
+    "average irregularity index": 0.0
+  },
+  {
+    "segment id": 3,
+    "average unevenness index": 0.6646492488731301,
+    "average irregularity index": 0.0
+  },
+  {
+    "segment id": 4,
+    "average unevenness index": 0.6763722299718871,
+    "average irregularity index": 3.340145134735339
+  },
+  {
+    "segment id": 5,
+    "average unevenness index": 0.7139870319139373,
+    "average irregularity index": 11.03569285359896
+  },
+  {
+    "segment id": 6,
+    "average unevenness index": 0.7389423108600789,
+    "average irregularity index": 10.13851409689505
+  },
+  {
+    "segment id": 7,
+    "average unevenness index": 0.7501023154012159,
+    "average irregularity index": 69.37143580801526
+  },
+  {
+    "segment id": 8,
+    "average unevenness index": 0.7200457050783959,
+    "average irregularity index": 39.36934422581496
+  },
+  {
+    "segment id": 9,
+    "average unevenness index": 0.6948806751580044,
+    "average irregularity index": 28.30771691692713
+  }
+]

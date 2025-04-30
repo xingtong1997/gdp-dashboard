@@ -1,0 +1,38 @@
+[
+  {
+    "segment id": 1,
+    "average pedestrian speed": 1.3407497125165857
+  },
+  {
+    "segment id": 2,
+    "average pedestrian speed": 1.3331988719805892
+  },
+  {
+    "segment id": 3,
+    "average pedestrian speed": 1.3243513183207622
+  },
+  {
+    "segment id": 4,
+    "average pedestrian speed": 1.352755363491601
+  },
+  {
+    "segment id": 5,
+    "average pedestrian speed": 1.2532918316338375
+  },
+  {
+    "segment id": 6,
+    "average pedestrian speed": 1.1679905428103254
+  },
+  {
+    "segment id": 7,
+    "average pedestrian speed": 1.320130612133576
+  },
+  {
+    "segment id": 8,
+    "average pedestrian speed": 1.1139350970822977
+  },
+  {
+    "segment id": 9,
+    "average pedestrian speed": 1.1418856855398467
+  }
+]
