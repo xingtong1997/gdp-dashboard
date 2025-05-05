@@ -11,7 +11,16 @@ import json
 #importation des fichiers de données json
 with open("data/irr_event_coordinates.json", mode="r", encoding="utf-8") as irr_event_coordinates:
     irr_event_coordinates = json.load(irr_event_coordinates)
-
+with open("data/ped_density_per_segment.json", mode="r", encoding="utf-8") as ped_density_per_segment:
+    ped_density_per_segment = json.load(ped_density_per_segment)
+with open("data/ped_speed_per_segment.json", mode="r", encoding="utf-8") as ped_speed_per_segment:
+    ped_speed_per_segment = json.load(ped_speed_per_segment)
+with open("data/slope_per_segment.json", mode="r", encoding="utf-8") as slope_per_segment:
+    slope_per_segment = json.load(slope_per_segment)
+with open("data/unevenness_irregularity_per_segment.json", mode="r", encoding="utf-8") as unevenness_irregularity_per_segment:
+    unevenness_irregularity_per_segment = json.load(unevenness_irregularity_per_segment)
+with open("data/width_per_segment.json", mode="r", encoding="utf-8") as width_per_segment:
+    width_per_segment = json.load(width_per_segment)
 
 # --- Configuration de la Page ---
 st.set_page_config(
@@ -188,26 +197,26 @@ with tab2 :
     
 
     # --- Affichage Principal (Carte et Données) ---
-    col1, col2 = st.columns([2, 1])
+    col_map, col_data = st.columns([1,2], border=True)
 
-    with col1:
+    with col_map:
 
-        col3, col4 = st.columns([2, 1], vertical_alignment="center")
+        col_dropdown, col_pill = st.columns(2, vertical_alignment="center", border=True)
 
-        with col3:
+        with col_dropdown:
 
             # Créer les options pour le selectbox
             segment_options = ["Overview"] + sorted_ids # Utilise la liste triée numériquement
 
             selected_segment_id = st.selectbox("Sélectionnez un Segment :", options=segment_options)
         
-        with col4:
+        with col_pill:
 
-            test = st.pills("TEST", "Dispy segments number", label_visibility="hidden")
+            test = st.pills("TEST", "Display segments number", label_visibility="hidden")
 
         st.subheader("🗺️ Robot's path map")
 
-        m = folium.Map(location=[48.8566, 2.3522], zoom_start=12) # Centre/zoom par défaut
+        
 
         # Ajuster la vue initiale aux limites de tous les points
         if not path_df.empty:
@@ -223,12 +232,22 @@ with tab2 :
             if all_lats and all_lons: # S'assurer qu'on a collecté des points
                 min_lat, max_lat = min(all_lats), max(all_lats)
                 min_lon, max_lon = min(all_lons), max(all_lons)
+                 # Calculer le centre
+                center_lat = (min_lat + max_lat) / 2
+                center_lon = (min_lon + max_lon) / 2
+                map_center = [center_lat, center_lon]
+                
+                m = folium.Map(location=map_center, zoom_start=18) # Centre/zoom par défaut
 
                 if min_lat != max_lat or min_lon != max_lon:
                     bounds = [[min_lat, min_lon], [max_lat, max_lon]]
-                    m.fit_bounds(bounds, padding=(0.01, 0.01))
+                    # --- AJOUT DEBUG ---
+                    #st.text(f"Limites calculées (Bounds): {bounds}")
+                    # --- FIN AJOUT DEBUG ---
+                    m.fit_bounds(bounds, padding=(0,0))
+                    
                 else:
-                    m.location = [min_lat, min_lon]
+                    m.location = map_center
                     m.zoom_start = 16
             else:
                 st.warning("Impossible de calculer les limites géographiques (pas de coordonnées valides après parsing).")
@@ -280,9 +299,12 @@ with tab2 :
                     ).add_to(m)
 
         # Afficher la carte
-        map_data = st_folium(m, width=500, height=500)
+        map_data = st_folium(m, width='100%', height=500)
 
-    with col2:
+    with col_data:
+
+        col_graph, col_details = st.columns(2, border=True)
+        
         st.subheader("🔍 Segment's details")
 
         if selected_segment_id == "Overview" or selected_segment_id is None:
