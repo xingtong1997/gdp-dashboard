@@ -200,23 +200,19 @@ with tab2 :
     col_map, col_data = st.columns([1,2], border=True)
 
     with col_map:
-
-        col_dropdown, col_pill = st.columns(2, vertical_alignment="center", border=True)
-
-        with col_dropdown:
-
-            # Créer les options pour le selectbox
-            segment_options = ["Overview"] + sorted_ids # Utilise la liste triée numériquement
-
-            selected_segment_id = st.selectbox("Sélectionnez un Segment :", options=segment_options)
         
-        with col_pill:
+        # Créer les options pour le selectbox
+        segment_options = ["Overview"] + sorted_ids # Utilise la liste triée numériquement
 
-            test = st.pills("TEST", "Display segments number", label_visibility="hidden")
+        selected_segment_id = st.selectbox("Sélectionnez un Segment :", options=segment_options)
+        
+        test = st.segmented_control(None, ["Display segments number","Display Irregularities events"], label_visibility="hidden")
 
         st.subheader("🗺️ Robot's path map")
 
-        
+        map_center = [59.346639,18.072167]
+
+        m = folium.Map(location=map_center, zoom_start=16) # Centre/zoom par défaut
 
         # Ajuster la vue initiale aux limites de tous les points
         if not path_df.empty:
@@ -237,14 +233,14 @@ with tab2 :
                 center_lon = (min_lon + max_lon) / 2
                 map_center = [center_lat, center_lon]
                 
-                m = folium.Map(location=map_center, zoom_start=18) # Centre/zoom par défaut
+                
 
                 if min_lat != max_lat or min_lon != max_lon:
                     bounds = [[min_lat, min_lon], [max_lat, max_lon]]
                     # --- AJOUT DEBUG ---
                     #st.text(f"Limites calculées (Bounds): {bounds}")
                     # --- FIN AJOUT DEBUG ---
-                    m.fit_bounds(bounds, padding=(0,0))
+                    #m.fit_bounds(bounds, padding=(0,0))
                     
                 else:
                     m.location = map_center
@@ -297,6 +293,28 @@ with tab2 :
                         tooltip=f"Segment ID: {segment_id} (point unique)",
                         icon=folium.Icon(color='gray', icon='info-sign')
                     ).add_to(m)
+
+            if irr_event_coordinates and test == "Display Irregularities events" : # Vérifier si la liste n'est pas vide
+                for point_coords in irr_event_coordinates["irregularity events"]:
+                    try:
+                        # Assurer que les coordonnées sont des floats
+                        lat = float(point_coords["lat"])
+                        lon = float(point_coords["lon"])
+
+                        folium.CircleMarker(
+                            location=[lat, lon],
+                            radius=5,  # Taille du cercle en pixels
+                            color='red',  # Couleur du contour
+                            fill=True,
+                            fill_color='red', # Couleur de remplissage
+                            fill_opacity=0.7, # Opacité du remplissage
+                            # Ajouter un tooltip ou popup si nécessaire
+                            #tooltip=f"Point Spécifique {i+1}: ({lat:.4f}, {lon:.4f})"
+                            # popup=f"Détail du point {i+1}" # Optionnel
+                        ).add_to(m)
+                    except (ValueError, TypeError, IndexError) as e:
+                        st.warning(f"Impossible d'afficher le point spécifique ({point_coords}): {e}")
+            # --- FIN NOUVEAU BLOC ---
 
         # Afficher la carte
         map_data = st_folium(m, width='100%', height=500)
