@@ -7,6 +7,8 @@ import os
 import ast # Pour parser la chaîne de liste de tuples en toute sécurité
 import traceback # Pour afficher les erreurs de parsing détaillées
 import json
+import plotly.graph_objects as go
+
 
 #importation des fichiers de données json
 with open("data/irr_event_coordinates.json", mode="r", encoding="utf-8") as irr_event_coordinates:
@@ -17,8 +19,8 @@ with open("data/ped_speed_per_segment.json", mode="r", encoding="utf-8") as ped_
     ped_speed_per_segment = json.load(ped_speed_per_segment)
 with open("data/slope_per_segment.json", mode="r", encoding="utf-8") as slope_per_segment:
     slope_per_segment = json.load(slope_per_segment)
-with open("data/unevenness_irregularity_per_segment.json", mode="r", encoding="utf-8") as unevenness_irregularity_per_segment:
-    unevenness_irregularity_per_segment = json.load(unevenness_irregularity_per_segment)
+#with open("data/unevenness_irregularity_per_segment.json", mode="r", encoding="utf-8") as unevenness_irregularity_per_segment:
+    #unevenness_irregularity_per_segment = json.load(unevenness_irregularity_per_segment)
 with open("data/width_per_segment.json", mode="r", encoding="utf-8") as width_per_segment:
     width_per_segment = json.load(width_per_segment)
 
@@ -77,7 +79,7 @@ def parse_and_convert_coordinates(coord_str):
 
 # --- Chargement des Données ---
 @st.cache_data
-def load_data(path_data_path, sensor_data_path):
+def load_data(path_data_path, sensor_data_path, unevenness_irregularity_per_segment_path):
     # Charger les données du chemin (nouveau format: id, "[(lon, lat),...]")
     processed_path_df = pd.DataFrame(columns=['segment_id', 'locations']) # Init df vide
     try:
@@ -147,14 +149,19 @@ def load_data(path_data_path, sensor_data_path):
     except Exception as e:
         st.error(f"Erreur lors du chargement de {sensor_data_path}: {e}")
         sensor_df = pd.DataFrame(columns=['segment_id', 'timestamp', 'latitude', 'longitude', 'irregularity_value', 'current_width', 'pedestrian_detected'])
-
-    return processed_path_df, sensor_df
+    
+    try:
+        unevenness_irregularity_per_segment_df = pd.read_csv(unevenness_irregularity_per_segment_path)
+    except FileNotFoundError:
+        unevenness_irregularity_per_segment_df = pd.DataFrame(columns=['segment_id', 'average_unevenness_index', 'average_irregularity_index'])
+    return processed_path_df, sensor_df, unevenness_irregularity_per_segment_df
 
 # --- Chemins vers vos fichiers CSV ---
 PATH_CSV_PATH = 'data/segments.csv' # Votre fichier avec id, "[(lon, lat),...]"
 SENSOR_CSV_PATH = 'data/sensor_data.csv' # Fichier optionnel avec données temporelles
+UNEVENNESS_IRREGULARITY_PER_SEGMENT_PATH = 'data/unevenness_irregularity_per_segment.csv'
 
-path_df, sensor_df = load_data(PATH_CSV_PATH, SENSOR_CSV_PATH)
+path_df, sensor_df, unevenness_irregularity_per_segment_df = load_data(PATH_CSV_PATH, SENSOR_CSV_PATH, UNEVENNESS_IRREGULARITY_PER_SEGMENT_PATH)
 
 # --- Interface Utilisateur ---
 st.title("📊 Walkability analysis dashboard")
@@ -206,50 +213,32 @@ with tab2 :
 
         selected_segment_id = st.selectbox("Sélectionnez un Segment :", options=segment_options)
         
-        test = st.segmented_control(None, ["Display segments number","Display Irregularities events"], label_visibility="hidden")
+        # --- **NOUVEAU : Préparation de la Palette et Mapping de Couleurs** ---
+        # Utiliser les IDs triés pour une assignation stable si l'ordre importe peu,
+        # sinon utiliser unique_ids_str directement si l'ordre original d'apparition doit dicter la couleur.
+        # Utilisons sorted_ids pour la cohérence avec le selectbox.
+        ids_for_colors = sorted_ids
+
+        # Définir une palette de couleurs (ajoutez/modifiez selon vos goûts)
+        # Couleurs de https://colorbrewer2.org/#type=qualitative&scheme=Paired&n=10
+        color_palette = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a']
+        num_colors = len(color_palette)
+
+        # Créer un dictionnaire mappant chaque segment_id à une couleur
+        segment_color_map = {}
+        for i, seg_id in enumerate(ids_for_colors):
+            # Assigner les couleurs de manière cyclique si plus d'IDs que de couleurs
+            color_index = i % num_colors
+            segment_color_map[seg_id] = color_palette[color_index]
+        # --- FIN NOUVEAU ---
+
+        test = st.segmented_control("test", ["Display segments number","Display Irregularities events"], label_visibility="collapsed")
 
         st.subheader("🗺️ Robot's path map")
 
         map_center = [59.346639,18.072167]
 
         m = folium.Map(location=map_center, zoom_start=16) # Centre/zoom par défaut
-
-        # Ajuster la vue initiale aux limites de tous les points
-        if not path_df.empty:
-            all_lats = []
-            all_lons = []
-            # Itérer sur la colonne 'locations' qui contient des listes de (lat, lon)
-            for loc_list in path_df['locations']:
-                if loc_list: # Vérifier si la liste n'est pas vide
-                    # Extraire les latitudes et longitudes de chaque tuple dans la liste
-                    all_lats.extend([point[0] for point in loc_list]) # point[0] est la latitude
-                    all_lons.extend([point[1] for point in loc_list]) # point[1] est la longitude
-
-            if all_lats and all_lons: # S'assurer qu'on a collecté des points
-                min_lat, max_lat = min(all_lats), max(all_lats)
-                min_lon, max_lon = min(all_lons), max(all_lons)
-                 # Calculer le centre
-                center_lat = (min_lat + max_lat) / 2
-                center_lon = (min_lon + max_lon) / 2
-                map_center = [center_lat, center_lon]
-                
-                
-
-                if min_lat != max_lat or min_lon != max_lon:
-                    bounds = [[min_lat, min_lon], [max_lat, max_lon]]
-                    # --- AJOUT DEBUG ---
-                    #st.text(f"Limites calculées (Bounds): {bounds}")
-                    # --- FIN AJOUT DEBUG ---
-                    #m.fit_bounds(bounds, padding=(0,0))
-                    
-                else:
-                    m.location = map_center
-                    m.zoom_start = 16
-            else:
-                st.warning("Impossible de calculer les limites géographiques (pas de coordonnées valides après parsing).")
-        else:
-            st.warning("Données de chemin vides pour ajuster automatiquement la carte.")
-
 
         # Afficher tous les segments sur la carte
         if not path_df.empty:
@@ -260,6 +249,8 @@ with tab2 :
 
                 if len(locations) >= 2: # Besoin d'au moins 2 points pour une ligne
                     line_color = "#FF0000" if segment_id == selected_segment_id else "#007bff"
+                    if selected_segment_id == "Overview" : 
+                        line_color = segment_color_map.get(segment_id, '#808080') # Gris si ID non trouvé
                     line_weight = 10 if segment_id == selected_segment_id else 6
                     if test == "Display segments number":
                         folium.PolyLine(
@@ -321,86 +312,147 @@ with tab2 :
 
     with col_data:
 
-        col_graph, col_details = st.columns(2, border=True)
-        
         st.subheader("🔍 Segment's details")
 
         if selected_segment_id == "Overview" or selected_segment_id is None:
             st.info("Select a segment in the drop-down menu on the left to display details.")
-            # ... (code pour statistiques globales inchangé, peut nécessiter sensor_df) ...
-            st.markdown("---")
-            st.subheader("Global statistics")
-            if not sensor_df.empty:
-                st.metric("Number of segments", path_df['segment_id'].nunique())
-                if 'current_width' in sensor_df.columns:
-                    st.metric("Sidewalk mean width (m)", f"{sensor_df['current_width'].mean():.2f}")
-                if 'irregularity_value' in sensor_df.columns:
-                    st.metric("Max number of irregularities in one segment", f"{sensor_df['irregularity_value'].max():.2f}")
-            else:
-                st.metric("Nombre total de segments", path_df['segment_id'].nunique())
-                st.warning("Données capteurs ('sensor_data.csv') non disponibles pour statistiques globales détaillées.")
+        if selected_segment_id == "Overview":
+
+        
+            col_graph, col_details = st.columns([1, 0.5], border=True)
+            
+            with col_graph:
+
+                tab_unirreg, tab_abslop = st.tabs(["unvenness and irregularity indices","Absolute slope"])
+                with tab_unirreg:
+                    st.subheader("Indices of unevenness and irregularity across sidewalks (excluding crossings)")
+
+                    # --- Création de la Figure avec Deux Axes Y ---
+                    fig_combined = go.Figure()
+                    # 1. Ajouter la trace pour l'Irrégularité (Axe Y Primaire - Gauche)
+                    fig_combined.add_trace(go.Scatter(
+                        x=unevenness_irregularity_per_segment_df['segment_id'],
+                        y=unevenness_irregularity_per_segment_df['average_unevenness_index'],
+                        name='Unevenness', # Nom dans la légende
+                        yaxis='y1',         # Associer à l'axe y1 (par défaut)
+                        line=dict(color='royalblue') # Couleur spécifique
+                    ))
+
+                    # 2. Ajouter la trace pour la Largeur (Axe Y Secondaire - Droite)
+                    fig_combined.add_trace(go.Scatter(
+                        x=unevenness_irregularity_per_segment_df['segment_id'],
+                        y=unevenness_irregularity_per_segment_df['average_irregularity_index'],
+                        name='irregularity', # Nom dans la légende
+                        yaxis='y2',        # Important: Associer à l'axe y2
+                        line=dict(color='darkorange') # Couleur spécifique
+                    ))
+
+                    # 3. Configurer le Layout (Titres, Axes, Plage dynamique)
+                    fig_combined.update_layout(
+                        title=f"unevenness and irregularity {selected_segment_id}",
+                        xaxis_title="segment id",
+                        # Configuration Axe Y Primaire (Gauche) pour l'Irrégularité
+                        yaxis=dict(
+                            title="unevenness",
+                            
+                            tickfont=dict(color="royalblue"),
+                            side='left', # Positionner à gauche
+                            # Vous pourriez aussi rendre cet axe ajustable avec des widgets
+                            range=[0, 1]
+                        ),
+                        # Configuration Axe Y Secondaire (Droite) pour la Largeur
+                        yaxis2=dict(
+                            title="irregularity",
+                            tickfont=dict(color="darkorange"),
+                            side='right',       # Positionner à droite
+                            overlaying="y",    # Superposer à l'axe Y principal (partage l'axe X)
+                            # *** Appliquer la plage définie par le widget ***
+                        ),
+                        legend=dict(x=0.1, y=1.1, orientation="h"), # Position de la légende
+                        margin=dict(l=50, r=50, t=80, b=50) # Marges
+                    )
+
+                    # Afficher le graphique combiné
+                    st.plotly_chart(fig_combined, use_container_width=True)
+
+                    #fig_width = px.line(unevenness_irregularity_per_segment, x='segment id', y=['average unevenness index','average irregularity index'], title='Width evolution', labels={'segment id': 'segment id', 'average unevenness index': 'average unevenness index'})
+                    #fig_width.update_layout(xaxis_title=None, yaxis_title="average unevenness index")
+
+
+
+        
 
         # Le reste de la logique pour afficher les détails (graphiques, etc.)
         # reste basé sur sensor_df et selected_segment_id.
         # Il faut s'assurer que le fichier sensor_data.csv existe et
         # contient une colonne 'segment_id' qui correspond aux IDs dans segments.csv
 
-        elif not sensor_df.empty:
-            segment_data = sensor_df[sensor_df['segment_id'] == selected_segment_id].copy()
+        elif 0<int(selected_segment_id)<10:
 
-            if not segment_data.empty:
-                st.markdown(f"**Segment ID : {selected_segment_id}**")
+            # ... (code pour statistiques globales inchangé, peut nécessiter sensor_df) ...
+            st.metric("Segment's number :", selected_segment_id)
+            st.metric("Average pedestrian density :", round(ped_density_per_segment[int(selected_segment_id)-1]["average pedestrian density"],3))
+            st.metric("Maximum pedestrian density :", round(ped_density_per_segment[int(selected_segment_id)-1]["maximum pedestrian density"],3))
+            st.metric("Average pedestrian speed :", round(ped_speed_per_segment[int(selected_segment_id)-1]["average pedestrian speed"],3))
+            st.metric("Average effective width :", round(width_per_segment[int(selected_segment_id)-1]["average effective width"],3))
+            st.metric("Average minimum effective width :", round(width_per_segment[int(selected_segment_id)-1]["average minimum effective width"],3))
+
+
+      
+
+            #if not segment_data.empty:
+                #st.markdown(f"**Segment ID : {selected_segment_id}**")
                 # ... (affichage des métriques et graphiques basé sur segment_data) ...
-                col_metric1, col_metric2 = st.columns(2)
-                with col_metric1:
-                    metric_val = segment_data['current_width'].mean()
-                    st.metric("Mean width (m)", f"{metric_val:.2f}" if pd.notna(metric_val) else "N/A")
-                with col_metric2:
-                    metric_val = segment_data['irregularity_value'].max()
-                    st.metric("Max irregularity", f"{metric_val:.2f}" if pd.notna(metric_val) else "N/A")
+                #col_metric1, col_metric2 = st.columns(2)
+               # with col_metric1:
+                #    metric_val = segment_data['current_width'].mean()
+                #    st.metric("Mean width (m)", f"{metric_val:.2f}" if pd.notna(metric_val) else "N/A")
+                #with col_metric2:
+                   # metric_val = segment_data['irregularity_value'].max()
+                    #st.metric("Max irregularity", f"{metric_val:.2f}" if pd.notna(metric_val) else "N/A")
 
-                st.markdown("---")
-                st.markdown("**Temporal data charts :**")
+                #st.markdown("---")
+                #st.markdown("**Temporal data charts :**")
 
                 # Graphique : Irrégularité
-                if 'irregularity_value' in segment_data.columns and segment_data['irregularity_value'].notna().any():
-                    fig_irreg = px.line(segment_data.sort_values('timestamp'), x='timestamp', y='irregularity_value', title='Irregularity evolution', labels={'timestamp': 'Time', 'irregularity_value': 'Irregularity'})
-                    fig_irreg.update_layout(xaxis_title=None, yaxis_title="irregularity")
-                    st.plotly_chart(fig_irreg, use_container_width=True)
+                #if 'irregularity_value' in segment_data.columns and segment_data['irregularity_value'].notna().any():
+                    #fig_irreg = px.line(segment_data.sort_values('timestamp'), x='timestamp', y='irregularity_value', title='Irregularity evolution', labels={'timestamp': 'Time', 'irregularity_value': 'Irregularity'})
+                    #fig_irreg.update_layout(xaxis_title=None, yaxis_title="irregularity")
+                    #st.plotly_chart(fig_irreg, use_container_width=True)
 
                 # Graphique : Largeur
-                if 'current_width' in segment_data.columns and segment_data['current_width'].notna().any():
-                    fig_width = px.line(segment_data.sort_values('timestamp'), x='timestamp', y='current_width', title='Width evolution', labels={'timestamp': 'Temps', 'current_width': 'Width (m)'})
-                    fig_width.update_layout(xaxis_title=None, yaxis_title="Width (m)")
-                    st.plotly_chart(fig_width, use_container_width=True)
+                #if 'current_width' in segment_data.columns and segment_data['current_width'].notna().any():
+                    #fig_width = px.line(segment_data.sort_values('timestamp'), x='timestamp', y='current_width', title='Width evolution', labels={'timestamp': 'Temps', 'current_width': 'Width (m)'})
+                    #fig_width.update_layout(xaxis_title=None, yaxis_title="Width (m)")
+                    #st.plotly_chart(fig_width, use_container_width=True)
 
                 # Graphique : Passants
-                if 'pedestrian_detected' in segment_data.columns and segment_data['pedestrian_detected'].notna().any():
-                    segment_data['pedestrian_detected'] = segment_data['pedestrian_detected'].astype(int)
-                    if segment_data['pedestrian_detected'].sum() > 0:
-                        pedestrian_summary = segment_data.resample('T', on='timestamp')['pedestrian_detected'].sum().reset_index(name='detections')
-                        pedestrian_summary = pedestrian_summary[pedestrian_summary['detections'] > 0]
-                        fig_ped = px.bar(pedestrian_summary, x='timestamp', y='detections', title='Pedestrians detection per minute')
-                        fig_ped.update_layout(xaxis_title=None, yaxis_title="Number of detection")
-                        st.plotly_chart(fig_ped, use_container_width=True)
-                    else:
-                        st.markdown("*Aucun passant détecté sur ce segment.*")
+                #if 'pedestrian_detected' in segment_data.columns and segment_data['pedestrian_detected'].notna().any():
+                    #segment_data['pedestrian_detected'] = segment_data['pedestrian_detected'].astype(int)
+                    #if segment_data['pedestrian_detected'].sum() > 0:
+                        #pedestrian_summary = segment_data.resample('T', on='timestamp')['pedestrian_detected'].sum().reset_index(name='detections')
+                        #pedestrian_summary = pedestrian_summary[pedestrian_summary['detections'] > 0]
+                        #fig_ped = px.bar(pedestrian_summary, x='timestamp', y='detections', title='Pedestrians detection per minute')
+                        #fig_ped.update_layout(xaxis_title=None, yaxis_title="Number of detection")
+                        #st.plotly_chart(fig_ped, use_container_width=True)
+                    #else:
+                        #st.markdown("*Aucun passant détecté sur ce segment.*")
 
                 # Données brutes
-                st.markdown("---")
-                st.markdown("**Raw data**")
-                st.dataframe(segment_data.head())
+                #st.markdown("---")
+                #st.markdown("**Raw data**")
+                #st.dataframe(segment_data.head())
 
-            else:
-                st.markdown(f"**Segment ID : {selected_segment_id}**")
-                st.info(f"Aucune donnée détaillée (capteurs) trouvée pour le segment {selected_segment_id} dans '{SENSOR_CSV_PATH}'.")
+            #else:
+                #st.markdown(f"**Segment ID : {selected_segment_id}**")
+                #st.info(f"Aucune donnée détaillée (capteurs) trouvée pour le segment {selected_segment_id} dans '{SENSOR_CSV_PATH}'.")
                 # Afficher les points du chemin pour référence
-                segment_path_row = path_df[path_df['segment_id'] == selected_segment_id].iloc[0]
-                if segment_path_row is not None and segment_path_row['locations']:
-                    st.markdown("**Points du chemin (Lat, Lon) pour ce segment :**")
+                #segment_path_row = path_df[path_df['segment_id'] == selected_segment_id].iloc[0]
+                #if segment_path_row is not None and segment_path_row['locations']:
+                    #st.markdown("**Points du chemin (Lat, Lon) pour ce segment :**")
                     # Afficher les points sous forme de DataFrame pour la clarté
-                    points_df = pd.DataFrame(segment_path_row['locations'], columns=['Latitude', 'Longitude'])
-                    st.dataframe(points_df)
+                    #points_df = pd.DataFrame(segment_path_row['locations'], columns=['Latitude', 'Longitude'])
+                    #st.dataframe(points_df)
 
         else:
             st.warning(f"Le fichier de données capteurs '{SENSOR_CSV_PATH}' est vide ou n'a pas pu être chargé. Impossible d'afficher les détails du segment.")
