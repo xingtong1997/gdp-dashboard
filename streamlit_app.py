@@ -314,17 +314,17 @@ with tab2 :
 
         st.subheader("🔍 Segment's details")
 
-        if selected_segment_id == "Overview" or selected_segment_id is None:
-            st.info("Select a segment in the drop-down menu on the left to display details.")
         if selected_segment_id == "Overview":
 
-        
-            col_graph, col_details = st.columns([1, 0.5], border=True)
-            
-            with col_graph:
+            st.info("Select a segment in the drop-down menu on the left to display details.")
 
-                tab_unirreg, tab_abslop = st.tabs(["unvenness and irregularity indices","Absolute slope"])
-                with tab_unirreg:
+            
+            tab_unirreg, tab_abslop = st.tabs(["unvenness and irregularity indices","Absolute slope"])
+            
+            with tab_unirreg:
+
+                col_graph, col_details = st.columns([1, 0.5], border=True)
+                with col_graph:
                     st.subheader("Indices of unevenness and irregularity across sidewalks (excluding crossings)")
 
                     # --- Création de la Figure avec Deux Axes Y ---
@@ -349,7 +349,6 @@ with tab2 :
 
                     # 3. Configurer le Layout (Titres, Axes, Plage dynamique)
                     fig_combined.update_layout(
-                        title=f"unevenness and irregularity {selected_segment_id}",
                         xaxis_title="segment id",
                         # Configuration Axe Y Primaire (Gauche) pour l'Irrégularité
                         yaxis=dict(
@@ -358,7 +357,8 @@ with tab2 :
                             tickfont=dict(color="royalblue"),
                             side='left', # Positionner à gauche
                             # Vous pourriez aussi rendre cet axe ajustable avec des widgets
-                            range=[0, 1]
+                            range=[0, 1],
+                            showgrid=False
                         ),
                         # Configuration Axe Y Secondaire (Droite) pour la Largeur
                         yaxis2=dict(
@@ -378,9 +378,33 @@ with tab2 :
                     #fig_width = px.line(unevenness_irregularity_per_segment, x='segment id', y=['average unevenness index','average irregularity index'], title='Width evolution', labels={'segment id': 'segment id', 'average unevenness index': 'average unevenness index'})
                     #fig_width.update_layout(xaxis_title=None, yaxis_title="average unevenness index")
 
+            with tab_abslop:
+                col_graph, col_details = st.columns([1, 0.5], border=True)
+                with col_graph:
 
+                    st.subheader("Absolute slope across segments")
+                    Graph_color="royalblue"
+                    fig_abslop = px.line(slope_per_segment, x='segment id', y='absolute slope', labels={'segment id': 'segment id', 'absolute slope': 'absolute slope'})
+                    fig_abslop.update_traces(line_color=Graph_color)
+                    fig_abslop.update_layout(
+                        xaxis=dict(
+                        title="Segment id",
+                        tickfont=dict(color=Graph_color),
+                        tickvals= [i for i in range (11)],
+                        range=[0, 10]
+                    ),
+                    
+                    yaxis=dict(
+                        title="Absolute slope",
+                        tickfont=dict(color=Graph_color),
+                        side='left', # Positionner à gauche
+                        # Vous pourriez aussi rendre cet axe ajustable avec des widgets
+                        range=[0, 0.07]
+                    )
+                    )
+                    st.plotly_chart(fig_abslop, use_container_width=True)
 
-        
+            
 
         # Le reste de la logique pour afficher les détails (graphiques, etc.)
         # reste basé sur sensor_df et selected_segment_id.
