@@ -374,12 +374,16 @@ with tab2 :
 
                     # Afficher le graphique combiné
                     st.plotly_chart(fig_combined, use_container_width=True)
+                
+                with col_details:
+                    st.subheader("Graph explanation")
+                    st.text("Explanation to add")
 
-                    #fig_width = px.line(unevenness_irregularity_per_segment, x='segment id', y=['average unevenness index','average irregularity index'], title='Width evolution', labels={'segment id': 'segment id', 'average unevenness index': 'average unevenness index'})
-                    #fig_width.update_layout(xaxis_title=None, yaxis_title="average unevenness index")
 
             with tab_abslop:
+
                 col_graph, col_details = st.columns([1, 0.5], border=True)
+
                 with col_graph:
 
                     st.subheader("Absolute slope across segments")
@@ -403,6 +407,10 @@ with tab2 :
                     )
                     )
                     st.plotly_chart(fig_abslop, use_container_width=True)
+
+                with col_details:
+                    st.subheader("Graph explanation")
+                    st.text("This graph describe the absolute slope values across the sidewalks. It represents the steepness of each segment regardless of direction. The highest absolute slope is observed at Segment 7. Segment 1 and 2 exhibit the lowest slope values. This measurement can well reflect the varying elevation characteristics of different sidewalks, which is important for evaluating walkability or planning sidewalk robot navigation.")
 
             
 
