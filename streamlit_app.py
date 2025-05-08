@@ -191,27 +191,24 @@ def robust_num_key(item_str):
 sorted_ids = sorted(unique_ids_str, key=robust_num_key)
 
 #création des deux onglets, le premier étant context et le deuxième celu qui va générer les données
-tab1, tab2 = st.tabs(["Context", "Data"])
+tab1, tab2 = st.tabs(["Data", "Context and links"])
 
 
-#onglet d'affichage du contexte
-with tab1 :
-    st.subheader("🗺️ Context and Details about the project")
 
 #Onglets d'affichage des données
-with tab2 :
+with tab1 :
 
     
 
     # --- Affichage Principal (Carte et Données) ---
-    col_map, col_data = st.columns([1,2], border=True)
+    col_map, col_data = st.columns([1,1.5], border=True)
 
     with col_map:
         
         # Créer les options pour le selectbox
         segment_options = ["Overview"] + sorted_ids # Utilise la liste triée numériquement
 
-        selected_segment_id = st.selectbox("Sélectionnez un Segment :", options=segment_options)
+        selected_segment_id = st.selectbox("Select a segment to display infos :", options=segment_options)
         
         # --- **NOUVEAU : Préparation de la Palette et Mapping de Couleurs** ---
         # Utiliser les IDs triés pour une assignation stable si l'ordre importe peu,
@@ -221,7 +218,7 @@ with tab2 :
 
         # Définir une palette de couleurs (ajoutez/modifiez selon vos goûts)
         # Couleurs de https://colorbrewer2.org/#type=qualitative&scheme=Paired&n=10
-        color_palette = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a']
+        color_palette = ['#a83500','#1f78b4','#50b800','#0a6100','#7d4c2c','#e31a1c','#129778','#ff7f00','#781297','#6a3d9a']
         num_colors = len(color_palette)
 
         # Créer un dictionnaire mappant chaque segment_id à une couleur
@@ -319,7 +316,7 @@ with tab2 :
             st.info("Select a segment in the drop-down menu on the left to display details.")
 
             
-            tab_unirreg, tab_abslop = st.tabs(["unvenness and irregularity indices","Absolute slope"])
+            tab_unirreg, tab_abslop = st.tabs(["Unvenness and irregularity indices","Absolute slope"])
             
             with tab_unirreg:
 
@@ -488,3 +485,7 @@ with tab2 :
 
         else:
             st.warning(f"Le fichier de données capteurs '{SENSOR_CSV_PATH}' est vide ou n'a pas pu être chargé. Impossible d'afficher les détails du segment.")
+
+#onglet d'affichage du contexte
+with tab2 :
+    st.subheader("🗺️ Context and Details about the project")
