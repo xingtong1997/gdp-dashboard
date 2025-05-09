@@ -10,7 +10,7 @@ import json
 import plotly.graph_objects as go
 
 
-#importation des fichiers de données json
+#Json files importation
 with open("data/irr_event_coordinates.json", mode="r", encoding="utf-8") as irr_event_coordinates:
     irr_event_coordinates = json.load(irr_event_coordinates)
 with open("data/ped_density_per_segment.json", mode="r", encoding="utf-8") as ped_density_per_segment:
@@ -19,12 +19,10 @@ with open("data/ped_speed_per_segment.json", mode="r", encoding="utf-8") as ped_
     ped_speed_per_segment = json.load(ped_speed_per_segment)
 with open("data/slope_per_segment.json", mode="r", encoding="utf-8") as slope_per_segment:
     slope_per_segment = json.load(slope_per_segment)
-#with open("data/unevenness_irregularity_per_segment.json", mode="r", encoding="utf-8") as unevenness_irregularity_per_segment:
-    #unevenness_irregularity_per_segment = json.load(unevenness_irregularity_per_segment)
 with open("data/width_per_segment.json", mode="r", encoding="utf-8") as width_per_segment:
     width_per_segment = json.load(width_per_segment)
 
-# --- Configuration de la Page ---
+# --- Setting up page configuration ---
 st.set_page_config(
     page_title="Walkability Analysis Dashboard",
     page_icon="🚶",
@@ -79,7 +77,7 @@ def parse_and_convert_coordinates(coord_str):
 
 # --- Chargement des Données ---
 @st.cache_data
-def load_data(path_data_path, sensor_data_path, unevenness_irregularity_per_segment_path):
+def load_data(path_data_path, unevenness_irregularity_per_segment_path):
     # Charger les données du chemin (nouveau format: id, "[(lon, lat),...]")
     processed_path_df = pd.DataFrame(columns=['segment_id', 'locations']) # Init df vide
     try:
@@ -92,7 +90,7 @@ def load_data(path_data_path, sensor_data_path, unevenness_irregularity_per_segm
         path_df['coordinates_str'] = path_df['coordinates_str'].fillna('')
 
 
-        #st.write("Parsing segments coordinates...") # Feedback pour l'utilisateur
+        #st.write("Parsing segments coordinates...") # User Feedback
 
         # Appliquer la fonction de parsing
         # Note: parse_and_convert_coordinates retourne [] en cas d'erreur
@@ -123,11 +121,9 @@ def load_data(path_data_path, sensor_data_path, unevenness_irregularity_per_segm
         num_empty_original = original_rows - len(path_df[path_df['coordinates_str'].str.strip() != ''])
         num_successfully_parsed = len(processed_path_df)
 
-        #st.write(f"Parsing finished: {num_successfully_parsed} segments loaded successfully.")
+        #st.write(f"Parsing finished: {num_successfully_parsed} segments loaded successfully.") User Feedback
         if num_failed > 0:
              st.warning(f"{num_failed} segments ignorés en raison d'erreurs de parsing.")
-        # if num_empty_original > 0:
-        #      st.info(f"{num_empty_original} lignes avaient des coordonnées vides à l'origine.")
 
 
     except FileNotFoundError:
@@ -138,30 +134,17 @@ def load_data(path_data_path, sensor_data_path, unevenness_irregularity_per_segm
         st.error(traceback.format_exc()) # Affiche l'erreur complète pour le débogage
         # processed_path_df reste le df vide initialisé
 
-    # --- Chargement Sensor Data (inchangé) ---
-    try:
-        sensor_df = pd.read_csv(sensor_data_path)
-        sensor_df['timestamp'] = pd.to_datetime(sensor_df['timestamp'])
-        sensor_df['segment_id'] = sensor_df['segment_id'].astype(str)
-    except FileNotFoundError:
-        # st.warning(f"Le fichier de données capteurs {sensor_data_path} n'a pas été trouvé.")
-        sensor_df = pd.DataFrame(columns=['segment_id', 'timestamp', 'latitude', 'longitude', 'irregularity_value', 'current_width', 'pedestrian_detected'])
-    except Exception as e:
-        st.error(f"Erreur lors du chargement de {sensor_data_path}: {e}")
-        sensor_df = pd.DataFrame(columns=['segment_id', 'timestamp', 'latitude', 'longitude', 'irregularity_value', 'current_width', 'pedestrian_detected'])
-    
     try:
         unevenness_irregularity_per_segment_df = pd.read_csv(unevenness_irregularity_per_segment_path)
     except FileNotFoundError:
         unevenness_irregularity_per_segment_df = pd.DataFrame(columns=['segment_id', 'average_unevenness_index', 'average_irregularity_index'])
-    return processed_path_df, sensor_df, unevenness_irregularity_per_segment_df
+    return processed_path_df, unevenness_irregularity_per_segment_df
 
 # --- Chemins vers vos fichiers CSV ---
 PATH_CSV_PATH = 'data/segments.csv' # Votre fichier avec id, "[(lon, lat),...]"
-SENSOR_CSV_PATH = 'data/sensor_data.csv' # Fichier optionnel avec données temporelles
 UNEVENNESS_IRREGULARITY_PER_SEGMENT_PATH = 'data/unevenness_irregularity_per_segment.csv'
 
-path_df, sensor_df, unevenness_irregularity_per_segment_df = load_data(PATH_CSV_PATH, SENSOR_CSV_PATH, UNEVENNESS_IRREGULARITY_PER_SEGMENT_PATH)
+path_df, unevenness_irregularity_per_segment_df = load_data(PATH_CSV_PATH, UNEVENNESS_IRREGULARITY_PER_SEGMENT_PATH)
 
 # --- Interface Utilisateur ---
 st.title("📊 Walkability analysis dashboard")
@@ -197,8 +180,6 @@ tab1, tab2 = st.tabs(["Data", "Context and links"])
 
 #Onglets d'affichage des données
 with tab1 :
-
-    
 
     # --- Affichage Principal (Carte et Données) ---
     col_map, col_data = st.columns([1,1.5], border=True)
@@ -302,7 +283,6 @@ with tab1 :
                         ).add_to(m)
                     except (ValueError, TypeError, IndexError) as e:
                         st.warning(f"Impossible d'afficher le point spécifique ({point_coords}): {e}")
-            # --- FIN NOUVEAU BLOC ---
 
         # Afficher la carte
         map_data = st_folium(m, width='100%', height=500)
@@ -418,7 +398,6 @@ with tab1 :
 
         elif 0<int(selected_segment_id)<10:
 
-            # ... (code pour statistiques globales inchangé, peut nécessiter sensor_df) ...
             st.metric("Segment's number :", selected_segment_id)
             st.metric("Average pedestrian density :", round(ped_density_per_segment[int(selected_segment_id)-1]["average pedestrian density"],3))
             st.metric("Maximum pedestrian density :", round(ped_density_per_segment[int(selected_segment_id)-1]["maximum pedestrian density"],3))
@@ -483,9 +462,7 @@ with tab1 :
                     #points_df = pd.DataFrame(segment_path_row['locations'], columns=['Latitude', 'Longitude'])
                     #st.dataframe(points_df)
 
-        else:
-            st.warning(f"Le fichier de données capteurs '{SENSOR_CSV_PATH}' est vide ou n'a pas pu être chargé. Impossible d'afficher les détails du segment.")
-
+        
 #onglet d'affichage du contexte
 with tab2 :
     st.subheader("🗺️ Context and Details about the project")
