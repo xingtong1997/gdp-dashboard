@@ -149,6 +149,7 @@ path_df, unevenness_irregularity_per_segment_df = load_data(PATH_CSV_PATH, UNEVE
 # --- Interface Utilisateur ---
 st.title("📊 Walkability analysis dashboard")
 st.markdown("Data visualization of sidewalk state and caracteristics")
+st.markdown("By clicking on the button, you can display the location of the irregularities the robot encountered")
 
 if path_df.empty:
     st.warning("Impossible d'afficher la carte car les données du chemin n'ont pas pu être chargées ou parsées.")
@@ -354,7 +355,7 @@ with tab1 :
                 
                 with col_details:
                     st.subheader("Graph explanation")
-                    st.text("Explanation to add")
+                    st.text("The graph illustrates the indices of unevenness and irregularity across nine sidewalk segments, with the irregularity events marked as red points. The unevenness index, which ranges from 0 to 1, remains relatively consistent across most segments. Segment 1 shows the highest unevenness, primarily due to the presence of broken and uneven bricks.")
 
 
             with tab_abslop:
