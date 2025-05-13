@@ -8,6 +8,7 @@ import ast # Pour parser la chaîne de liste de tuples en toute sécurité
 import traceback # Pour afficher les erreurs de parsing détaillées
 import json
 import plotly.graph_objects as go
+import datetime
 
 
 #Json files importation
@@ -140,44 +141,105 @@ def load_data(path_data_path, unevenness_irregularity_per_segment_path):
         unevenness_irregularity_per_segment_df = pd.DataFrame(columns=['segment_id', 'average_unevenness_index', 'average_irregularity_index'])
     return processed_path_df, unevenness_irregularity_per_segment_df
 
-#fonction de chargement des données sur les passants
-def charger_donnees_passants(chemin_fichier_csv):
+  
+def process_pedestrian_data_per_quarter_hour(file_path):
     """
-    Charge les données depuis un fichier CSV avec 'timestamp' et 'nombre_passants'.
+    Charge les données de détection de piétons, les agrège par quart d'heure
+    en comptant les piétons uniques.
+
+    Args:
+        file_path (str): Chemin vers le fichier CSV. Le CSV doit avoir
+                         les colonnes 'timestamp' et 'pedestrian_ids'.
+                         'pedestrian_ids' doit être une chaîne représentant une liste
+                         d'IDs, ex: "[101, 102, 103]".
+
+    Returns:
+        pandas.DataFrame: Un DataFrame avec les colonnes 'timestamp_quarter'
+                          (début du quart d'heure) et 'unique_pedestrian_count'.
+                          Retourne un DataFrame vide en cas d'erreur.
     """
     try:
-        df = pd.read_csv(chemin_fichier_csv)
+        df = pd.read_csv(file_path, sep=';')
 
-        # Vérifier la présence des colonnes nécessaires
-        if 'timestamp' not in df.columns or 'nombre_passants' not in df.columns:
-            st.error(f"Le fichier CSV doit contenir les colonnes 'timestamp' et 'nombre_passants'. "
-                     f"Colonnes trouvées : {df.columns.tolist()}")
-            return pd.DataFrame(columns=['timestamp', 'nombre_passants']) # Retourner un DataFrame vide
+        # Vérification des colonnes nécessaires
+        if 'time_rounded' not in df.columns or 'persons' not in df.columns:
+            # Dans Streamlit, on utiliserait st.error(), hors Streamlit, print() ou lever une exception
+            print(f"Erreur: Le fichier CSV '{file_path}' doit contenir les colonnes 'time_rounded' et 'persons'.")
+            return pd.DataFrame(columns=['timestamp_quarter', 'unique_pedestrian_count'])
 
-        # Convertir 'timestamp' en objets datetime
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        # S'assurer que 'nombre_passants' est numérique, remplacer erreurs par 0
-        df['nombre_passants'] = pd.to_numeric(df['nombre_passants'], errors='coerce').fillna(0)
+        # 1. Convertir la colonne 'timestamp' en objets datetime
+        df['time_rounded'] = pd.to_datetime(df['time_rounded'], format="%H:%M")
 
-        # Trier par timestamp (important pour les graphiques)
-        df = df.sort_values(by='timestamp')
-        return df
+        # 2. Parser la colonne 'pedestrian_ids' (chaîne) en listes Python d'IDs
+        def parse_id_list_from_string(id_list_str):
+            if pd.isna(id_list_str) or not isinstance(id_list_str, str) or not id_list_str.strip():
+                return [] # Retourne une liste vide si la chaîne est vide, NaN ou pas une chaîne
+            try:
+                # ast.literal_eval est plus sûr que eval()
+                ids = ast.literal_eval(id_list_str)
+                # S'assurer que c'est une liste et que les IDs sont (par exemple) des entiers
+                if isinstance(ids, list):
+                    return [int(pid) for pid in ids] # ou str(pid) si vos IDs sont des chaînes
+                return []
+            except (ValueError, SyntaxError, TypeError):
+                # Gérer les chaînes mal formées
+                return []
+        
+        df['parsed_ids'] = df['persons'].apply(parse_id_list_from_string)
+
+        # 3. Mettre 'timestamp' comme index pour la fonction resample
+        df = df.set_index('time_rounded')
+
+        # 4. & 5. Regrouper par quart d'heure ('15T') et agréger
+        # Définir la fonction d'agrégation pour compter les IDs uniques 
+        def aggregate_unique_ids(series_of_lists_of_ids):
+            # series_of_lists_of_ids contient toutes les listes 'parsed_ids' pour un quart d'heure donné
+            if series_of_lists_of_ids.empty:
+                return 0
+             
+            combined_list = []
+            for id_list in series_of_lists_of_ids:
+                combined_list.extend(id_list) # Concaténer toutes les listes
+            
+            if not combined_list:
+                return 0
+            
+            unique_ids = set(combined_list) # Enlever les doublons
+            return len(unique_ids)         # Compter les uniques
+        
+        # 3. Regrouper par la colonne de quart d'heure fournie
+        grouped_by_quarter = df.groupby('time_rounded')['parsed_ids']
+
+        # 4. Appliquer l'agrégation
+        quarter_hour_summary = grouped_by_quarter.apply(aggregate_unique_ids)
+
+        # Renommer la série résultante et la transformer en DataFrame
+        quarter_hour_summary_df = quarter_hour_summary.rename('unique_pedestrian_count').reset_index()
+        quarter_hour_summary_df.rename(columns={'time_rounded': 'timestamp_quarter'}, inplace=True)
+
+        # S'assurer que les résultats sont triés par temps pour le graphique
+        quarter_hour_summary_df = quarter_hour_summary_df.sort_values(by='timestamp_quarter')
+
+        return quarter_hour_summary_df
 
     except FileNotFoundError:
-        st.error(f"Fichier non trouvé : {chemin_fichier_csv}")
-        return pd.DataFrame(columns=['timestamp', 'nombre_passants'])
+        print(f"Erreur: Fichier non trouvé à l'emplacement '{file_path}'.")
+        return pd.DataFrame(columns=['timestamp_quarter', 'unique_pedestrian_count'])
     except Exception as e:
-        st.error(f"Erreur lors du chargement du fichier {chemin_fichier_csv}: {e}")
-        return pd.DataFrame(columns=['timestamp', 'nombre_passants'])
-    
+        print(f"Une erreur est survenue lors du traitement du fichier: {e}")
+        # Pour un débogage plus détaillé dans un environnement de développement :
+        # import traceback
+        # traceback.print_exc()
+        return pd.DataFrame(columns=['timestamp_quarter', 'unique_pedestrian_count'])
+
 
 # --- Chemins vers vos fichiers CSV ---
 PATH_CSV_PATH = 'data/segments.csv' # Votre fichier avec id, "[(lon, lat),...]"
 UNEVENNESS_IRREGULARITY_PER_SEGMENT_PATH = 'data/unevenness_irregularity_per_segment.csv'
-CHEMIN_FICHIER_PASSANTS = 'donnees_passants_journee.csv'
+CHEMIN_FICHIER_PASSANTS = 'data/ExperimentData_quentin.csv'
 
 path_df, unevenness_irregularity_per_segment_df = load_data(PATH_CSV_PATH, UNEVENNESS_IRREGULARITY_PER_SEGMENT_PATH)
-passants_df = charger_donnees_passants(CHEMIN_FICHIER_PASSANTS)
+Pedestrian_df = process_pedestrian_data_per_quarter_hour(CHEMIN_FICHIER_PASSANTS)
 
 # --- Interface Utilisateur ---
 st.title("📊 Walkability analysis dashboard")
@@ -425,83 +487,68 @@ with tab1 :
             
             with tab_OverTimeValues:
 
-                col_graph, col_details = st.columns([1, 0.5], border=True)
-
-                with col_graph:
-
-                    st.subheader("Pedestrian count over the day. Use the slider to highlight a designated area")
-
-                    if passants_df.empty:
-                        st.warning("Aucune donnée de passant à afficher. Vérifiez le fichier CSV ou les erreurs ci-dessus.")
-                    else:
-                        
-                        # Créer les colonnes pour le slider et le graphique
-                        col_slider, col_chart = st.columns([1, 3]) # Slider plus petit (1/4 de la largeur)
-
-                        with col_slider:
-                            st.markdown("#### Plage à Surligner")
-                            # Déterminer la plage horaire des données disponibles pour les valeurs par défaut du slider
-                            # Les données sont supposées être pour une seule journée.
-                            min_time_data = passants_df['timestamp'].min().time()
-                            max_time_data = passants_df['timestamp'].max().time()
-
-                            # Bornes du slider pour couvrir toute la journée
-                            slider_min_val = datetime.time(0, 0)
-                            slider_max_val = datetime.time(23, 59)
-
-                            selected_time_range = st.slider(
-                                "Surligner la plage horaire :",
-                                min_value=slider_min_val,
-                                max_value=slider_max_val,
-                                value=(min_time_data, max_time_data), # Plage par défaut basée sur les données
-                                format="HH:mm", # Format d'affichage de l'heure
-                                key="pedestrian_time_slider" # Clé unique
-                            )
-
-                        with col_chart:
-                            # Créer la figure Plotly
-                            fig_passants = go.Figure()
-
-                            # Ajouter la trace principale des barres (toutes les données de la journée)
-                            fig_passants.add_trace(go.Bar(
-                                x=passants_df['timestamp'],
-                                y=passants_df['nombre_passants'],
-                                name='Nombre de Passants',
-                                marker_color='rgb(26, 118, 255)' # Couleur bleue pour les barres
-                            ))
-
-                            # Préparer les datetimes pour le surlignage
-                            # Prendre la date du premier timestamp des données (supposant une seule journée)
-                            # S'il n'y a pas de données, .iloc[0] échouera, mais on est dans un 'else' après un check 'empty'.
-                            data_date = passants_df['timestamp'].iloc[0].date()
-                            highlight_start_dt = datetime.datetime.combine(data_date, selected_time_range[0])
-                            highlight_end_dt = datetime.datetime.combine(data_date, selected_time_range[1])
-
-                            # Ajouter la forme de surlignage
-                            fig_passants.add_shape(
-                                type="rect",
-                                xref="x",
-                                yref="paper",
-                                x0=highlight_start_dt,
-                                y0=0,
-                                x1=highlight_end_dt,
-                                y1=1,
-                                fillcolor="LightSalmon", # Couleur du surlignage
-                                opacity=0.4,
-                                layer="below",
-                                line_width=0,
-                            )
-
-                            # Configurer le layout du graphique
-                            fig_passants.update_layout(
-                                title_text="Activité des Piétons au Fil du Temps",
-                                xaxis_title="Heure de la journée",
-                                yaxis_title="Nombre de Passants Détectés",
-                                bargap=0.2, # Espace entre les barres
-                                # Optionnel: forcer l'affichage de tous les timestamps sur l'axe X si besoin
-                                # xaxis=dict(type='category') # Peut aider si les timestamps ne sont pas réguliers
-                            )
-                            st.plotly_chart(fig_passants, use_container_width=True)
+                st.subheader("Pedestrian count over the day")
+                if Pedestrian_df.empty:
+                    st.warning("Aucune donnée de passant à afficher. Vérifiez le fichier CSV ou les erreurs ci-dessus.")
+                else:
+                    
+                    st.markdown("####  Use the slider to highlight a designated area")
+                    # Déterminer la plage horaire des données disponibles pour les valeurs par défaut du slider
+                    # Les données sont supposées être pour une seule journée.
+                    min_time_data = Pedestrian_df['timestamp_quarter'].min().time()
+                    max_time_data = Pedestrian_df['timestamp_quarter'].max().time()
+                    # Bornes du slider pour couvrir toute la journée
+                    slider_min_val = datetime.time(0, 0)
+                    slider_max_val = datetime.time(23, 59)
+                    selected_time_range = st.slider(
+                        "Surligner la plage horaire :",
+                        min_value=slider_min_val,
+                        max_value=slider_max_val,
+                        value=(min_time_data, max_time_data), # Plage par défaut basée sur les données
+                        format="HH:mm", # Format d'affichage de l'heure
+                        key="pedestrian_time_slider", # Clé unique
+                        label_visibility='collapsed'
+                    )
+                    
+                    # Créer la figure Plotly
+                    fig_passants = go.Figure()
+                    # Ajouter la trace principale des barres (toutes les données de la journée)
+                    fig_passants.add_trace(go.Bar(
+                        x=Pedestrian_df['timestamp_quarter'],
+                        y=Pedestrian_df['unique_pedestrian_count'],
+                        name='Number of pedestrian',
+                        marker_color='rgb(26, 118, 255)' # Couleur bleue pour les barres
+                    ))
+                    # Préparer les datetimes pour le surlignage
+                    # Prendre la date du premier timestamp des données (supposant une seule journée)
+                    # S'il n'y a pas de données, .iloc[0] échouera, mais on est dans un 'else' après un check 'empty'.
+                    data_date = Pedestrian_df['timestamp_quarter'].iloc[0].date()
+                    highlight_start_dt = datetime.datetime.combine(data_date, selected_time_range[0])
+                    highlight_end_dt = datetime.datetime.combine(data_date, selected_time_range[1])
+                    # Ajouter la forme de surlignage
+                    fig_passants.add_shape(
+                        type="rect",
+                        xref="x",
+                        yref="paper",
+                        x0=highlight_start_dt,
+                        y0=0,
+                        x1=highlight_end_dt,
+                        y1=1,
+                        fillcolor="LightSalmon", # Couleur du surlignage
+                        opacity=0.3,
+                        layer="below",
+                        line_width=0,
+                    )
+                    # Configurer le layout du graphique
+                    fig_passants.update_layout(
+                        title_text="Pedestrians number along the day",
+                        xaxis_title="Time of day",
+                        yaxis_title="Number of pedestrian detected",
+                        bargap=0.2, # Espace entre les barres
+                        # Optionnel: forcer l'affichage de tous les timestamps sur l'axe X si besoin
+                        # xaxis=dict(type='category') # Peut aider si les timestamps ne sont pas réguliers
+                    )
+                    st.plotly_chart(fig_passants, use_container_width=True)
             
 
         # Le reste de la logique pour afficher les détails (graphiques, etc.)
