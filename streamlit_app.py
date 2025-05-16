@@ -169,7 +169,7 @@ def process_pedestrian_data_per_quarter_hour(file_path):
 
         # 1. Convertir la colonne 'timestamp' en objets datetime
         df['time_rounded'] = pd.to_datetime(df['time_rounded'], format="%H:%M")
-
+        df['time_rounded'] = df['time_rounded'].dt.floor('15T').dt.time
         # 2. Parser la colonne 'pedestrian_ids' (chaîne) en listes Python d'IDs
         def parse_id_list_from_string(id_list_str):
             if pd.isna(id_list_str) or not isinstance(id_list_str, str) or not id_list_str.strip():
@@ -204,22 +204,18 @@ def process_pedestrian_data_per_quarter_hour(file_path):
             if not combined_list:
                 return 0
             
-            unique_ids = set(combined_list) # Enlever les doublons
-            return len(unique_ids)         # Compter les uniques
+            #unique_ids = set(combined_list) # Enlever les doublons
+            return len(combined_list)         # Compter les uniques
         
         # 3. Regrouper par la colonne de quart d'heure fournie
-        grouped_by_quarter = df.groupby('time_rounded')['parsed_ids']
-
-        # 4. Appliquer l'agrégation
-        quarter_hour_summary = grouped_by_quarter.apply(aggregate_unique_ids)
+        quarter_hour_summary = df.groupby(['segment_id','time_rounded'])['parsed_ids'].apply(aggregate_unique_ids)
 
         # Renommer la série résultante et la transformer en DataFrame
         quarter_hour_summary_df = quarter_hour_summary.rename('unique_pedestrian_count').reset_index()
         quarter_hour_summary_df.rename(columns={'time_rounded': 'timestamp_quarter'}, inplace=True)
 
         # S'assurer que les résultats sont triés par temps pour le graphique
-        quarter_hour_summary_df = quarter_hour_summary_df.sort_values(by='timestamp_quarter')
-
+        quarter_hour_summary_df = quarter_hour_summary_df.sort_values(by=['segment_id','timestamp_quarter'])
         return quarter_hour_summary_df
 
     except FileNotFoundError:
@@ -392,7 +388,7 @@ with tab1 :
             st.info("Select a segment in the drop-down menu on the left to display details.")
 
             
-            tab_unirreg, tab_abslop, tab_OverTimeValues = st.tabs(["Unvenness and irregularity indices","Absolute slope","Pedestrian count"])
+            tab_unirreg, tab_abslop = st.tabs(["Unvenness and irregularity indices","Absolute slope"])
             
             with tab_unirreg:
 
@@ -485,9 +481,32 @@ with tab1 :
                     st.subheader("Graph explanation")
                     st.text("This graph describe the absolute slope values across the sidewalks. It represents the steepness of each segment regardless of direction. The highest absolute slope is observed at Segment 7. Segment 1 and 2 exhibit the lowest slope values. This measurement can well reflect the varying elevation characteristics of different sidewalks, which is important for evaluating walkability or planning sidewalk robot navigation.")
             
-            with tab_OverTimeValues:
 
+        # Le reste de la logique pour afficher les détails (graphiques, etc.)
+        # reste basé sur sensor_df et selected_segment_id.
+        # Il faut s'assurer que le fichier sensor_data.csv existe et
+        # contient une colonne 'segment_id' qui correspond aux IDs dans segments.csv
+
+        else :
+            
+            col_data,col_graph = st.columns([1,1.5], border=True)
+
+            with col_data:
+                if 0<int(selected_segment_id)<10:
+
+                    st.metric("Segment's number :", selected_segment_id)
+                    st.metric("Average pedestrian density :", round(ped_density_per_segment[int(selected_segment_id)-1]["average pedestrian density"],3))
+                    st.metric("Maximum pedestrian density :", round(ped_density_per_segment[int(selected_segment_id)-1]["maximum pedestrian density"],3))
+                    st.metric("Average pedestrian speed :", round(ped_speed_per_segment[int(selected_segment_id)-1]["average pedestrian speed"],3))
+                    st.metric("Average effective width :", round(width_per_segment[int(selected_segment_id)-1]["average effective width"],3))
+                    st.metric("Average minimum effective width :", round(width_per_segment[int(selected_segment_id)-1]["average minimum effective width"],3))
+
+                else:
+                    st.info("No data is available for this specific segment")
+            
+            with col_graph:
                 st.subheader("Pedestrian count over the day")
+                
                 if Pedestrian_df.empty:
                     st.warning("Aucune donnée de passant à afficher. Vérifiez le fichier CSV ou les erreurs ci-dessus.")
                 else:
@@ -495,8 +514,8 @@ with tab1 :
                     st.markdown("####  Use the slider to highlight a designated area")
                     # Déterminer la plage horaire des données disponibles pour les valeurs par défaut du slider
                     # Les données sont supposées être pour une seule journée.
-                    min_time_data = Pedestrian_df['timestamp_quarter'].min().time()
-                    max_time_data = Pedestrian_df['timestamp_quarter'].max().time()
+                    min_time_data = Pedestrian_df.loc[Pedestrian_df['segment_id'] == int(selected_segment_id)]['timestamp_quarter'].min()
+                    max_time_data = Pedestrian_df.loc[Pedestrian_df['segment_id'] == int(selected_segment_id)]['timestamp_quarter'].max()
                     # Bornes du slider pour couvrir toute la journée
                     slider_min_val = datetime.time(0, 0)
                     slider_max_val = datetime.time(23, 59)
@@ -514,17 +533,17 @@ with tab1 :
                     fig_passants = go.Figure()
                     # Ajouter la trace principale des barres (toutes les données de la journée)
                     fig_passants.add_trace(go.Bar(
-                        x=Pedestrian_df['timestamp_quarter'],
-                        y=Pedestrian_df['unique_pedestrian_count'],
+                        x=Pedestrian_df.loc[Pedestrian_df['segment_id'] == int(selected_segment_id)]['timestamp_quarter'],
+                        y=Pedestrian_df.loc[Pedestrian_df['segment_id'] == int(selected_segment_id)]['unique_pedestrian_count'],
                         name='Number of pedestrian',
                         marker_color='rgb(26, 118, 255)' # Couleur bleue pour les barres
                     ))
                     # Préparer les datetimes pour le surlignage
                     # Prendre la date du premier timestamp des données (supposant une seule journée)
                     # S'il n'y a pas de données, .iloc[0] échouera, mais on est dans un 'else' après un check 'empty'.
-                    data_date = Pedestrian_df['timestamp_quarter'].iloc[0].date()
-                    highlight_start_dt = datetime.datetime.combine(data_date, selected_time_range[0])
-                    highlight_end_dt = datetime.datetime.combine(data_date, selected_time_range[1])
+                    data_date = Pedestrian_df['timestamp_quarter'].iloc[0]
+                    highlight_start_dt = selected_time_range[0]
+                    highlight_end_dt = selected_time_range[1]
                     # Ajouter la forme de surlignage
                     fig_passants.add_shape(
                         type="rect",
@@ -549,78 +568,7 @@ with tab1 :
                         # xaxis=dict(type='category') # Peut aider si les timestamps ne sont pas réguliers
                     )
                     st.plotly_chart(fig_passants, use_container_width=True)
-            
 
-        # Le reste de la logique pour afficher les détails (graphiques, etc.)
-        # reste basé sur sensor_df et selected_segment_id.
-        # Il faut s'assurer que le fichier sensor_data.csv existe et
-        # contient une colonne 'segment_id' qui correspond aux IDs dans segments.csv
-
-        elif 0<int(selected_segment_id)<10:
-
-            st.metric("Segment's number :", selected_segment_id)
-            st.metric("Average pedestrian density :", round(ped_density_per_segment[int(selected_segment_id)-1]["average pedestrian density"],3))
-            st.metric("Maximum pedestrian density :", round(ped_density_per_segment[int(selected_segment_id)-1]["maximum pedestrian density"],3))
-            st.metric("Average pedestrian speed :", round(ped_speed_per_segment[int(selected_segment_id)-1]["average pedestrian speed"],3))
-            st.metric("Average effective width :", round(width_per_segment[int(selected_segment_id)-1]["average effective width"],3))
-            st.metric("Average minimum effective width :", round(width_per_segment[int(selected_segment_id)-1]["average minimum effective width"],3))
-
-
-      
-
-            #if not segment_data.empty:
-                #st.markdown(f"**Segment ID : {selected_segment_id}**")
-                # ... (affichage des métriques et graphiques basé sur segment_data) ...
-                #col_metric1, col_metric2 = st.columns(2)
-               # with col_metric1:
-                #    metric_val = segment_data['current_width'].mean()
-                #    st.metric("Mean width (m)", f"{metric_val:.2f}" if pd.notna(metric_val) else "N/A")
-                #with col_metric2:
-                   # metric_val = segment_data['irregularity_value'].max()
-                    #st.metric("Max irregularity", f"{metric_val:.2f}" if pd.notna(metric_val) else "N/A")
-
-                #st.markdown("---")
-                #st.markdown("**Temporal data charts :**")
-
-                # Graphique : Irrégularité
-                #if 'irregularity_value' in segment_data.columns and segment_data['irregularity_value'].notna().any():
-                    #fig_irreg = px.line(segment_data.sort_values('timestamp'), x='timestamp', y='irregularity_value', title='Irregularity evolution', labels={'timestamp': 'Time', 'irregularity_value': 'Irregularity'})
-                    #fig_irreg.update_layout(xaxis_title=None, yaxis_title="irregularity")
-                    #st.plotly_chart(fig_irreg, use_container_width=True)
-
-                # Graphique : Largeur
-                #if 'current_width' in segment_data.columns and segment_data['current_width'].notna().any():
-                    #fig_width = px.line(segment_data.sort_values('timestamp'), x='timestamp', y='current_width', title='Width evolution', labels={'timestamp': 'Temps', 'current_width': 'Width (m)'})
-                    #fig_width.update_layout(xaxis_title=None, yaxis_title="Width (m)")
-                    #st.plotly_chart(fig_width, use_container_width=True)
-
-                # Graphique : Passants
-                #if 'pedestrian_detected' in segment_data.columns and segment_data['pedestrian_detected'].notna().any():
-                    #segment_data['pedestrian_detected'] = segment_data['pedestrian_detected'].astype(int)
-                    #if segment_data['pedestrian_detected'].sum() > 0:
-                        #pedestrian_summary = segment_data.resample('T', on='timestamp')['pedestrian_detected'].sum().reset_index(name='detections')
-                        #pedestrian_summary = pedestrian_summary[pedestrian_summary['detections'] > 0]
-                        #fig_ped = px.bar(pedestrian_summary, x='timestamp', y='detections', title='Pedestrians detection per minute')
-                        #fig_ped.update_layout(xaxis_title=None, yaxis_title="Number of detection")
-                        #st.plotly_chart(fig_ped, use_container_width=True)
-                    #else:
-                        #st.markdown("*Aucun passant détecté sur ce segment.*")
-
-                # Données brutes
-                #st.markdown("---")
-                #st.markdown("**Raw data**")
-                #st.dataframe(segment_data.head())
-
-            #else:
-                #st.markdown(f"**Segment ID : {selected_segment_id}**")
-                #st.info(f"Aucune donnée détaillée (capteurs) trouvée pour le segment {selected_segment_id} dans '{SENSOR_CSV_PATH}'.")
-                # Afficher les points du chemin pour référence
-                #segment_path_row = path_df[path_df['segment_id'] == selected_segment_id].iloc[0]
-                #if segment_path_row is not None and segment_path_row['locations']:
-                    #st.markdown("**Points du chemin (Lat, Lon) pour ce segment :**")
-                    # Afficher les points sous forme de DataFrame pour la clarté
-                    #points_df = pd.DataFrame(segment_path_row['locations'], columns=['Latitude', 'Longitude'])
-                    #st.dataframe(points_df)
 
         
 #onglet d'affichage du contexte
