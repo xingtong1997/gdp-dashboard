@@ -505,13 +505,13 @@ with tab1 :
                     st.info("No data is available for this specific segment")
             
             with col_graph:
-                st.subheader("Pedestrian count over the day")
+                st.subheader("Pedestrian count over the day on the selected segment")
                 
                 if Pedestrian_df.empty:
                     st.warning("Aucune donnée de passant à afficher. Vérifiez le fichier CSV ou les erreurs ci-dessus.")
                 else:
                     
-                    st.markdown("####  Use the slider to highlight a designated area")
+                    #st.markdown("####  Use the slider to highlight a designated area")
                     # Déterminer la plage horaire des données disponibles pour les valeurs par défaut du slider
                     # Les données sont supposées être pour une seule journée.
                     min_time_data = Pedestrian_df.loc[Pedestrian_df['segment_id'] == int(selected_segment_id)]['timestamp_quarter'].min()
@@ -519,15 +519,15 @@ with tab1 :
                     # Bornes du slider pour couvrir toute la journée
                     slider_min_val = datetime.time(0, 0)
                     slider_max_val = datetime.time(23, 59)
-                    selected_time_range = st.slider(
-                        "Surligner la plage horaire :",
-                        min_value=slider_min_val,
-                        max_value=slider_max_val,
-                        value=(min_time_data, max_time_data), # Plage par défaut basée sur les données
-                        format="HH:mm", # Format d'affichage de l'heure
-                        key="pedestrian_time_slider", # Clé unique
-                        label_visibility='collapsed'
-                    )
+                    #selected_time_range = st.slider(
+                    #    "Surligner la plage horaire :",
+                    #    min_value=slider_min_val,
+                    #    max_value=slider_max_val,
+                    #    value=(min_time_data, max_time_data), # Plage par défaut basée sur les données
+                    #    format="HH:mm", # Format d'affichage de l'heure
+                    #    key="pedestrian_time_slider", # Clé unique
+                    #    label_visibility='collapsed'
+                    #)
                     
                     # Créer la figure Plotly
                     fig_passants = go.Figure()
@@ -541,23 +541,23 @@ with tab1 :
                     # Préparer les datetimes pour le surlignage
                     # Prendre la date du premier timestamp des données (supposant une seule journée)
                     # S'il n'y a pas de données, .iloc[0] échouera, mais on est dans un 'else' après un check 'empty'.
-                    data_date = Pedestrian_df['timestamp_quarter'].iloc[0]
-                    highlight_start_dt = selected_time_range[0]
-                    highlight_end_dt = selected_time_range[1]
+                    #data_date = Pedestrian_df['timestamp_quarter'].iloc[0]
+                    #highlight_start_dt = selected_time_range[0]
+                    #highlight_end_dt = selected_time_range[1]
                     # Ajouter la forme de surlignage
-                    fig_passants.add_shape(
-                        type="rect",
-                        xref="x",
-                        yref="paper",
-                        x0=highlight_start_dt,
-                        y0=0,
-                        x1=highlight_end_dt,
-                        y1=1,
-                        fillcolor="LightSalmon", # Couleur du surlignage
-                        opacity=0.3,
-                        layer="below",
-                        line_width=0,
-                    )
+                    #fig_passants.add_shape(
+                    #    type="rect",
+                    #    xref="x",
+                    #    yref="paper",
+                    #    x0=highlight_start_dt,
+                    #    y0=0,
+                    #    x1=highlight_end_dt,
+                    #    y1=1,
+                    #    fillcolor="LightSalmon", # Couleur du surlignage
+                    #    opacity=0.3,
+                    #    layer="below",
+                    #    line_width=0,
+                    #)
                     # Configurer le layout du graphique
                     fig_passants.update_layout(
                         title_text="Pedestrians number along the day",
