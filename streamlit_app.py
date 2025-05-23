@@ -238,9 +238,9 @@ path_df, unevenness_irregularity_per_segment_df = load_data(PATH_CSV_PATH, UNEVE
 Pedestrian_df = process_pedestrian_data_per_quarter_hour(CHEMIN_FICHIER_PASSANTS)
 
 # --- Interface Utilisateur ---
-st.title("📊 Walkability analysis dashboard")
-st.markdown("Data visualization of sidewalk state and caracteristics")
-st.markdown("By clicking on the button, you can display the location of the irregularities the robot encountered")
+st.title("📊 Sidewalk Mobility Data Dashboard")
+st.markdown("Data visualization of sidewalk usage and caracteristics")
+st.markdown("By clicking on the button, you can display the location of the irregularities the robot encountered or the number associated with each segment.")
 
 if path_df.empty:
     st.warning("Impossible d'afficher la carte car les données du chemin n'ont pas pu être chargées ou parsées.")
@@ -274,7 +274,7 @@ tab1, tab2 = st.tabs(["Data", "Context and links"])
 with tab1 :
 
     # --- Affichage Principal (Carte et Données) ---
-    col_map, col_data = st.columns([1,1.5], border=True)
+    col_map, col_data = st.columns([1,1.3], border=True)
 
     with col_map:
         
@@ -377,7 +377,7 @@ with tab1 :
                         st.warning(f"Impossible d'afficher le point spécifique ({point_coords}): {e}")
 
         # Afficher la carte
-        map_data = st_folium(m, width='100%', height=500)
+        map_data = st_folium(m, width='100%', height=600)
 
     with col_data:
 
@@ -388,12 +388,12 @@ with tab1 :
             st.info("Select a segment in the drop-down menu on the left to display details.")
 
             
-            tab_unirreg, tab_abslop = st.tabs(["Unvenness and irregularity indices","Absolute slope"])
+            tab_unirreg, tab_abslop, tab_pedestrian = st.tabs(["Unvenness and irregularity indices","Absolute slope","Pedestrian data"])
             
             with tab_unirreg:
 
-                col_graph, col_details = st.columns([1, 0.5], border=True)
-                with col_graph:
+                #col_graph, col_details = st.columns([1, 0.5], border=True)
+                #with col_graph:
                     st.subheader("Indices of unevenness and irregularity across sidewalks (excluding crossings)")
 
                     # --- Création de la Figure avec Deux Axes Y ---
@@ -444,16 +444,16 @@ with tab1 :
                     # Afficher le graphique combiné
                     st.plotly_chart(fig_combined, use_container_width=True)
                 
-                with col_details:
+                #with col_details:
                     st.subheader("Graph explanation")
                     st.text("The graph illustrates the indices of unevenness and irregularity across nine sidewalk segments, with the irregularity events marked as red points. The unevenness index, which ranges from 0 to 1, remains relatively consistent across most segments. Segment 1 shows the highest unevenness, primarily due to the presence of broken and uneven bricks.")
 
 
             with tab_abslop:
 
-                col_graph, col_details = st.columns([1, 0.5], border=True)
+                #col_graph, col_details = st.columns([1, 0.5], border=True)
 
-                with col_graph:
+                #with col_graph:
 
                     st.subheader("Absolute slope across segments")
                     Graph_color="royalblue"
@@ -477,10 +477,31 @@ with tab1 :
                     )
                     st.plotly_chart(fig_abslop, use_container_width=True)
 
-                with col_details:
+                #with col_details:
                     st.subheader("Graph explanation")
                     st.text("This graph describe the absolute slope values across the sidewalks. It represents the steepness of each segment regardless of direction. The highest absolute slope is observed at Segment 7. Segment 1 and 2 exhibit the lowest slope values. This measurement can well reflect the varying elevation characteristics of different sidewalks, which is important for evaluating walkability or planning sidewalk robot navigation.")
             
+            with tab_pedestrian:
+                fig_passants = go.Figure()
+                    # Ajouter la trace principale des barres (toutes les données de la journée)
+                pedestrian_overview = Pedestrian_df.groupby('timestamp_quarter')['unique_pedestrian_count'].sum()
+                pedestrian_overview = pedestrian_overview.rename('total_pedestrian').reset_index()
+                #st.dataframe(pedestrian_overview)
+                fig_passants.add_trace(go.Bar(
+                    x=pedestrian_overview['timestamp_quarter'],
+                    y=pedestrian_overview['total_pedestrian'],
+                    name='Number of pedestrian',
+                    marker_color='rgb(26, 118, 255)' # Couleur bleue pour les barres
+                    ))
+                fig_passants.update_layout(
+                        title_text="Pedestrians number along the day",
+                        xaxis_title="Time of day",
+                        yaxis_title="Number of pedestrian detected",
+                        bargap=0.2, # Espace entre les barres
+                        # Optionnel: forcer l'affichage de tous les timestamps sur l'axe X si besoin
+                        # xaxis=dict(type='category') # Peut aider si les timestamps ne sont pas réguliers
+                    )
+                st.plotly_chart(fig_passants, use_container_width=True)
 
         # Le reste de la logique pour afficher les détails (graphiques, etc.)
         # reste basé sur sensor_df et selected_segment_id.
@@ -489,22 +510,32 @@ with tab1 :
 
         else :
             
-            col_data,col_graph = st.columns([1,1.5], border=True)
+            tab_data,tab_graph = st.tabs(["Detailed data and explanation","Pedestrian graph"])
 
-            with col_data:
+            with tab_data:
                 if 0<int(selected_segment_id)<10:
 
                     st.metric("Segment's number :", selected_segment_id)
-                    st.metric("Average pedestrian density :", round(ped_density_per_segment[int(selected_segment_id)-1]["average pedestrian density"],3))
-                    st.metric("Maximum pedestrian density :", round(ped_density_per_segment[int(selected_segment_id)-1]["maximum pedestrian density"],3))
-                    st.metric("Average pedestrian speed :", round(ped_speed_per_segment[int(selected_segment_id)-1]["average pedestrian speed"],3))
-                    st.metric("Average effective width :", round(width_per_segment[int(selected_segment_id)-1]["average effective width"],3))
-                    st.metric("Average minimum effective width :", round(width_per_segment[int(selected_segment_id)-1]["average minimum effective width"],3))
+                    with st.popover("Average pedestrian density :"):
+                        st.markdown("The estimation of sidewalk pedestrian density is based on the three-dimensional pedestrian timespace diagram proposed by Saberi and Mahmassani (2014), which extends Edie’s definitions of fundamental traffic variables(Edie, 1963).")
+                    st.metric("Average pedestrian density :", str(round(ped_density_per_segment[int(selected_segment_id)-1]["average pedestrian density"],3))+" ped/m\u00b2",label_visibility="collapsed")
+                    with st.popover("Maximum pedestrian density :"):
+                        st.markdown("The estimation of sidewalk pedestrian density is based on the three-dimensional pedestrian timespace diagram proposed by Saberi and Mahmassani (2014), which extends Edie’s definitions of fundamental traffic variables(Edie, 1963).")
+                    st.metric("Maximum pedestrian density :", str(round(ped_density_per_segment[int(selected_segment_id)-1]["maximum pedestrian density"],3))+" ped/m\u00b2",label_visibility="collapsed")
+                    with st.popover("Average pedestrian speed :"):
+                        st.markdown("This feature represents the average speed of all pedestrians detected by the robot while traversing the given segment.")
+                    st.metric("Average pedestrian speed :", str(round(ped_speed_per_segment[int(selected_segment_id)-1]["average pedestrian speed"],3))+" m/s",label_visibility="collapsed")
+                    with st.popover("Average effective width :"):
+                        st.markdown("Details about Average effective width")
+                    st.metric("Average effective width :", str(round(width_per_segment[int(selected_segment_id)-1]["average effective width"],3))+" m",label_visibility="collapsed")
+                    with st.popover("Average minimum effective width :"):
+                        st.markdown("Details about Average effective width")
+                    st.metric("Average minimum effective width :", str(round(width_per_segment[int(selected_segment_id)-1]["average minimum effective width"],3))+" m",label_visibility="collapsed")
 
                 else:
                     st.info("No data is available for this specific segment")
             
-            with col_graph:
+            with tab_graph:
                 st.subheader("Pedestrian count over the day on the selected segment")
                 
                 if Pedestrian_df.empty:
@@ -573,4 +604,13 @@ with tab1 :
         
 #onglet d'affichage du contexte
 with tab2 :
-    st.subheader("🗺️ Context and Details about the project")
+
+    col_photo, col_text = st.columns([1,2], border=True)
+    with col_photo:
+        st.subheader("Robot picture")
+        st.image("data/Robot_photo.png",use_container_width=True)
+
+    with col_text:
+        st.subheader("🗺️ Context and Details about the project")
+        st.markdown("The essence of the project")
+        st.link_button("Project webpage", "https://www.digitalfutures.kth.se/project/investigating-sidewalks-mobility-and-improving-it-with-robots-ismir/")
