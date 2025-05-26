@@ -608,9 +608,18 @@ with tab2 :
     col_photo, col_text = st.columns([1,2], border=True)
     with col_photo:
         st.subheader("Robot picture")
+        st.markdown("The robot utilized for sidewalk data collection is a custom-designed, open-source vehicle called Small Vehicles for Autonomy (SVEA) (Jiang et al., 2022).")
+        st.markdown("In this study, the robot was manually driven along sidewalks to collect data.")
         st.image("data/Robot_photo.png",use_container_width=True)
 
     with col_text:
         st.subheader("🗺️ Context and Details about the project")
-        st.markdown("The essence of the project")
-        st.link_button("Project webpage", "https://www.digitalfutures.kth.se/project/investigating-sidewalks-mobility-and-improving-it-with-robots-ismir/")
+        st.markdown("##### Objective")
+        st.markdown("Based on empirical data from sidewalk robots’ trips, we will shed light on sidewalk mobility and improve real-world robot delivery operations. Through statistical analysis and Machine Learning (ML), we will assess the efficiency of robots’ paths and their relation to pedestrian infrastructure, interactions with different transport users (such as walkers, cyclists, e-scooters, and motorized vehicles), and other variables (e.g., weather).")
+        st.markdown("A crucial task of the project will focus on integrating prediction models with routing algorithms to discover more effective routing solutions. Another task will involve identifying Walkability KPIs” to describe sidewalk mobility conditions based on the data collected.")
+        st.markdown("##### Background")
+        st.markdown("Sidewalk robots appear to be a promising solution for City Logistics. Hubs, retail locations, and even retrofitted vehicles might dispatch them for short-range trips and partially replace standard, less sustainable delivery methods. The ISMIR project aims to develop a more comprehensive understanding of sidewalk robot delivery in realistic scenarios. The investigation of sidewalk navigation challenges will also provide the opportunity to explore pedestrian infrastructure and sidewalk mobility from a novel perspective.")
+        st.markdown("##### Crossdisciplinary collaboration")
+        st.markdown("The researchers in the team represent the KTH School of Architecture and the Built Environment, Department of Urban Planning & Environment, and KTH School of Electrical Engineering and Computer Science, Department of Intelligent Systems.")
+
+        st.link_button("Link to the project webpage", "https://www.digitalfutures.kth.se/project/investigating-sidewalks-mobility-and-improving-it-with-robots-ismir/")
