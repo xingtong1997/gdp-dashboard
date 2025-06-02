@@ -169,7 +169,7 @@ def process_pedestrian_data_per_quarter_hour(file_path):
 
         # 1. Convertir la colonne 'timestamp' en objets datetime
         df['time_rounded'] = pd.to_datetime(df['time_rounded'], format="%H:%M")
-        df['time_rounded'] = df['time_rounded'].dt.floor('15T').dt.time
+        df['time_rounded'] = df['time_rounded'].dt.floor('15min').dt.time
         # 2. Parser la colonne 'pedestrian_ids' (chaîne) en listes Python d'IDs
         def parse_id_list_from_string(id_list_str):
             if pd.isna(id_list_str) or not isinstance(id_list_str, str) or not id_list_str.strip():
@@ -266,7 +266,7 @@ def robust_num_key(item_str):
 sorted_ids = sorted(unique_ids_str, key=robust_num_key)
 
 #création des deux onglets, le premier étant context et le deuxième celu qui va générer les données
-tab1, tab2 = st.tabs(["Data", "Context and links"])
+tab1, tab2 = st.tabs(["# Data", "# Project Background"])
 
 
 
@@ -302,9 +302,9 @@ with tab1 :
             segment_color_map[seg_id] = color_palette[color_index]
         # --- FIN NOUVEAU ---
 
-        test = st.segmented_control("test", ["Display segments number","Display Irregularities events"], label_visibility="collapsed")
+        test = st.pills("test", "Display segments number", label_visibility="collapsed")
 
-        st.subheader("🗺️ Robot's path map")
+        st.subheader("🗺️ Studied Sidewalk Network")
 
         map_center = [59.346639,18.072167]
 
@@ -355,26 +355,26 @@ with tab1 :
                         icon=folium.Icon(color='gray', icon='info-sign')
                     ).add_to(m)
 
-            if irr_event_coordinates and test == "Display Irregularities events" : # Vérifier si la liste n'est pas vide
-                for point_coords in irr_event_coordinates["irregularity events"]:
-                    try:
-                        # Assurer que les coordonnées sont des floats
-                        lat = float(point_coords["lat"])
-                        lon = float(point_coords["lon"])
+            #if irr_event_coordinates and test == "Display Irregularities events" : # Vérifier si la liste n'est pas vide
+            #    for point_coords in irr_event_coordinates["irregularity events"]:
+            #        try:
+            #            # Assurer que les coordonnées sont des floats
+            #            lat = float(point_coords["lat"])
+            #            lon = float(point_coords["lon"])
 
-                        folium.CircleMarker(
-                            location=[lat, lon],
-                            radius=5,  # Taille du cercle en pixels
-                            color='red',  # Couleur du contour
-                            fill=True,
-                            fill_color='red', # Couleur de remplissage
-                            fill_opacity=0.7, # Opacité du remplissage
-                            # Ajouter un tooltip ou popup si nécessaire
-                            #tooltip=f"Point Spécifique {i+1}: ({lat:.4f}, {lon:.4f})"
-                            # popup=f"Détail du point {i+1}" # Optionnel
-                        ).add_to(m)
-                    except (ValueError, TypeError, IndexError) as e:
-                        st.warning(f"Impossible d'afficher le point spécifique ({point_coords}): {e}")
+            #            folium.CircleMarker(
+            #                location=[lat, lon],
+            #                radius=5,  # Taille du cercle en pixels
+            #                color='red',  # Couleur du contour
+            #                fill=True,
+            #                fill_color='red', # Couleur de remplissage
+            #                fill_opacity=0.7, # Opacité du remplissage
+            #                # Ajouter un tooltip ou popup si nécessaire
+            #                #tooltip=f"Point Spécifique {i+1}: ({lat:.4f}, {lon:.4f})"
+            #                # popup=f"Détail du point {i+1}" # Optionnel
+            #            ).add_to(m)
+            #        except (ValueError, TypeError, IndexError) as e:
+            #            st.warning(f"Impossible d'afficher le point spécifique ({point_coords}): {e}")
 
         # Afficher la carte
         map_data = st_folium(m, width='100%', height=600)
@@ -605,21 +605,14 @@ with tab1 :
 #onglet d'affichage du contexte
 with tab2 :
 
-    col_photo, col_text = st.columns([1,2], border=True)
-    with col_photo:
-        st.subheader("Robot picture")
-        st.markdown("The robot utilized for sidewalk data collection is a custom-designed, open-source vehicle called Small Vehicles for Autonomy (SVEA) (Jiang et al., 2022).")
-        st.markdown("In this study, the robot was manually driven along sidewalks to collect data.")
-        st.image("data/Robot_photo.png",use_container_width=True)
-
-    with col_text:
-        st.subheader("🗺️ Context and Details about the project")
-        st.markdown("##### Objective")
-        st.markdown("Based on empirical data from sidewalk robots’ trips, we will shed light on sidewalk mobility and improve real-world robot delivery operations. Through statistical analysis and Machine Learning (ML), we will assess the efficiency of robots’ paths and their relation to pedestrian infrastructure, interactions with different transport users (such as walkers, cyclists, e-scooters, and motorized vehicles), and other variables (e.g., weather).")
-        st.markdown("A crucial task of the project will focus on integrating prediction models with routing algorithms to discover more effective routing solutions. Another task will involve identifying Walkability KPIs” to describe sidewalk mobility conditions based on the data collected.")
-        st.markdown("##### Background")
-        st.markdown("Sidewalk robots appear to be a promising solution for City Logistics. Hubs, retail locations, and even retrofitted vehicles might dispatch them for short-range trips and partially replace standard, less sustainable delivery methods. The ISMIR project aims to develop a more comprehensive understanding of sidewalk robot delivery in realistic scenarios. The investigation of sidewalk navigation challenges will also provide the opportunity to explore pedestrian infrastructure and sidewalk mobility from a novel perspective.")
-        st.markdown("##### Crossdisciplinary collaboration")
-        st.markdown("The researchers in the team represent the KTH School of Architecture and the Built Environment, Department of Urban Planning & Environment, and KTH School of Electrical Engineering and Computer Science, Department of Intelligent Systems.")
-
-        st.link_button("Link to the project webpage", "https://www.digitalfutures.kth.se/project/investigating-sidewalks-mobility-and-improving-it-with-robots-ismir/")
+    st.subheader("Investigating Sidewalks’ Mobility and Improving it with Robots (ISMIR)” Project")
+    st.markdown("Sidewalk delivery robots offer a promising solution for sustainable City Logistics. These robots can be deployed from hubs, retail locations, or even retrofitted vehicles to perform short-range deliveries, partially replacing traditional, less sustainable methods. The ISMIR project aims to develop a deeper, data-driven understanding of sidewalk robot operations in realistic urban settings and to explore sidewalk mobility through the lens of robotic navigation.")
+    st.markdown("ISMIR is a collaborative project involving researchers from [The Division of Transport and Systems Analysis](https://www.kth.se/en/som/avdelningar/sek/transport-och-systemanalys-1.17211) and the [Integrated Transport Research Lab (ITRL)](https://www.itrl.kth.se/integrated-transport-research-lab-itrl-1.1081637)  at KTH Royal Institute of Technology (Stockholm, Sweden).")
+    st.link_button("Link to the project webpage", "https://www.digitalfutures.kth.se/project/investigating-sidewalks-mobility-and-improving-it-with-robots-ismir/")
+    
+    st.markdown("##### Objective")
+    st.markdown("Using empirical data from sidewalk robot trips between October, 2024 and March, 2025 on the KTH campus, the project involved:")
+    st.markdown("- Analysis of sidewalk mobility patterns and assess delivery efficiency.")
+    st.markdown("- Application of statistical and machine learning methods to evaluate the relation between sidewalk users’ patterns, contextual variables such as weather conditions, and pedestrian infrastructure features")
+    st.markdown("##### Team")
+    
