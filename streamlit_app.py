@@ -240,7 +240,6 @@ Pedestrian_df = process_pedestrian_data_per_quarter_hour(CHEMIN_FICHIER_PASSANTS
 # --- Interface Utilisateur ---
 st.title("📊 Sidewalk Mobility Data Dashboard")
 st.markdown("Data visualization of sidewalk usage and caracteristics")
-st.markdown("By clicking on the button, you can display the location of the irregularities the robot encountered or the number associated with each segment.")
 
 if path_df.empty:
     st.warning("Impossible d'afficher la carte car les données du chemin n'ont pas pu être chargées ou parsées.")
@@ -524,10 +523,9 @@ with tab1 :
                     st.metric("Maximum pedestrian density :", str(round(ped_density_per_segment[int(selected_segment_id)-1]["maximum pedestrian density"],3))+" ped/m\u00b2",label_visibility="collapsed")
                     with st.popover("Average pedestrian speed :"):
                         st.markdown("This feature represents the average speed of all pedestrians detected by the robot while traversing the given segment.")
-                    st.metric("Average pedestrian speed :", str(round(ped_speed_per_segment[int(selected_segment_id)-1]["average pedestrian speed"],3))+" m/s",label_visibility="collapsed")
-                    with st.popover("Average effective width :"):
-                        st.markdown("Details about Average effective width")
-                    st.metric("Average effective width :", str(round(width_per_segment[int(selected_segment_id)-1]["average effective width"],3))+" m",label_visibility="collapsed")
+                    st.metric("## Average pedestrian speed :", str(round(ped_speed_per_segment[int(selected_segment_id)-1]["average pedestrian speed"],3))+" m/s",label_visibility="collapsed")
+                    
+                    st.metric("Average effective width :", str(round(width_per_segment[int(selected_segment_id)-1]["average effective width"],3))+" m")
                     with st.popover("Average minimum effective width :"):
                         st.markdown("Details about Average effective width")
                     st.metric("Average minimum effective width :", str(round(width_per_segment[int(selected_segment_id)-1]["average minimum effective width"],3))+" m",label_visibility="collapsed")
@@ -614,5 +612,35 @@ with tab2 :
     st.markdown("Using empirical data from sidewalk robot trips between October, 2024 and March, 2025 on the KTH campus, the project involved:")
     st.markdown("- Analysis of sidewalk mobility patterns and assess delivery efficiency.")
     st.markdown("- Application of statistical and machine learning methods to evaluate the relation between sidewalk users’ patterns, contextual variables such as weather conditions, and pedestrian infrastructure features")
-    st.markdown("##### Team")
+    st.markdown("## Team")
+
+    col_robot,col_Xing, col_Michele,col_Kaj,col_Sulthan,col_Jonas = st.columns(6, border=False)
+    with col_robot:
+        st.image("data/pictures/Robot_photo.png",use_container_width=True)
+        st.markdown("#### SVEA Robot")
+        st.markdown("The SVEA robot used for sidewalk data collection and the mini network on KTH campus where the robot operates")
+    with col_Xing:
+        st.image("data/pictures/xingtong.jfif",use_container_width=True)
+        st.markdown("#### Xing Tong")
+        st.markdown("I am a Ph.D. student in the Division of Transport and Systems Analysis, engaging in the ISMIR project. My expertise lies in traffic analysis, GIS, and machine learning.")
+        
+    with col_Michele:
+        st.image("data/pictures/micheles.jfif",use_container_width=True)
+        st.markdown("#### Michele Simoni")
+        st.markdown("Michele D. Simoni currently serves as an Assistant Professor in Transport Systems Analysis. Michele’s main research activity is currently focused on modeling and optimization of advanced transportation solutions.")
     
+    with col_Kaj:
+        st.image("data/pictures/kajarf.jfif",use_container_width=True)
+        st.markdown("#### Kaj Munhoz Arfvidsson")
+        st.markdown("I am a Ph.D. student in the Division of Transport and Systems Analysis, engaging in the ISMIR project. My expertise lies in traffic analysis, GIS, and machine learning.")
+    
+    with col_Sulthan:
+        st.image("data/pictures/missing-profile-image.png",use_container_width=True)
+        st.markdown("#### Sulthan Suresh Fazeela")
+        st.markdown("I am a Research Engineer working primarily with sidewalk mobility and safe autonomous navigation for the small vehicles for autonomy (svea) platform at the Smart Mobility Lab.")
+
+    with col_Jonas:
+        st.image("data/pictures/jonas1.jfif",use_container_width=True)
+        st.markdown("#### Jonas Mårtensson")
+        st.markdown("Jonas Mårtensson is Professor of Automatic Control with applications in Transportation Systems at KTH Royal Institute of Technology in Stockholm, Sweden. He is the director of the Integrated Transport Research Lab (ITRL).")
+        
