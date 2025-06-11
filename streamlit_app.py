@@ -354,27 +354,6 @@ with tab1 :
                         icon=folium.Icon(color='gray', icon='info-sign')
                     ).add_to(m)
 
-            #if irr_event_coordinates and test == "Display Irregularities events" : # Vérifier si la liste n'est pas vide
-            #    for point_coords in irr_event_coordinates["irregularity events"]:
-            #        try:
-            #            # Assurer que les coordonnées sont des floats
-            #            lat = float(point_coords["lat"])
-            #            lon = float(point_coords["lon"])
-
-            #            folium.CircleMarker(
-            #                location=[lat, lon],
-            #                radius=5,  # Taille du cercle en pixels
-            #                color='red',  # Couleur du contour
-            #                fill=True,
-            #                fill_color='red', # Couleur de remplissage
-            #                fill_opacity=0.7, # Opacité du remplissage
-            #                # Ajouter un tooltip ou popup si nécessaire
-            #                #tooltip=f"Point Spécifique {i+1}: ({lat:.4f}, {lon:.4f})"
-            #                # popup=f"Détail du point {i+1}" # Optionnel
-            #            ).add_to(m)
-            #        except (ValueError, TypeError, IndexError) as e:
-            #            st.warning(f"Impossible d'afficher le point spécifique ({point_coords}): {e}")
-
         # Afficher la carte
         map_data = st_folium(m, width='100%', height=600)
 
@@ -493,7 +472,7 @@ with tab1 :
                     marker_color='rgb(26, 118, 255)' # Couleur bleue pour les barres
                     ))
                 fig_passants.update_layout(
-                        title_text="Pedestrians number along the day",
+                        title_text="Pedestrians count along the day",
                         xaxis_title="Time of day",
                         yaxis_title="Number of pedestrian detected",
                         bargap=0.2, # Espace entre les barres
@@ -539,25 +518,6 @@ with tab1 :
                 if Pedestrian_df.empty:
                     st.warning("Aucune donnée de passant à afficher. Vérifiez le fichier CSV ou les erreurs ci-dessus.")
                 else:
-                    
-                    #st.markdown("####  Use the slider to highlight a designated area")
-                    # Déterminer la plage horaire des données disponibles pour les valeurs par défaut du slider
-                    # Les données sont supposées être pour une seule journée.
-                    min_time_data = Pedestrian_df.loc[Pedestrian_df['segment_id'] == int(selected_segment_id)]['timestamp_quarter'].min()
-                    max_time_data = Pedestrian_df.loc[Pedestrian_df['segment_id'] == int(selected_segment_id)]['timestamp_quarter'].max()
-                    # Bornes du slider pour couvrir toute la journée
-                    slider_min_val = datetime.time(0, 0)
-                    slider_max_val = datetime.time(23, 59)
-                    #selected_time_range = st.slider(
-                    #    "Surligner la plage horaire :",
-                    #    min_value=slider_min_val,
-                    #    max_value=slider_max_val,
-                    #    value=(min_time_data, max_time_data), # Plage par défaut basée sur les données
-                    #    format="HH:mm", # Format d'affichage de l'heure
-                    #    key="pedestrian_time_slider", # Clé unique
-                    #    label_visibility='collapsed'
-                    #)
-                    
                     # Créer la figure Plotly
                     fig_passants = go.Figure()
                     # Ajouter la trace principale des barres (toutes les données de la journée)
@@ -567,29 +527,10 @@ with tab1 :
                         name='Number of pedestrian',
                         marker_color='rgb(26, 118, 255)' # Couleur bleue pour les barres
                     ))
-                    # Préparer les datetimes pour le surlignage
-                    # Prendre la date du premier timestamp des données (supposant une seule journée)
-                    # S'il n'y a pas de données, .iloc[0] échouera, mais on est dans un 'else' après un check 'empty'.
-                    #data_date = Pedestrian_df['timestamp_quarter'].iloc[0]
-                    #highlight_start_dt = selected_time_range[0]
-                    #highlight_end_dt = selected_time_range[1]
-                    # Ajouter la forme de surlignage
-                    #fig_passants.add_shape(
-                    #    type="rect",
-                    #    xref="x",
-                    #    yref="paper",
-                    #    x0=highlight_start_dt,
-                    #    y0=0,
-                    #    x1=highlight_end_dt,
-                    #    y1=1,
-                    #    fillcolor="LightSalmon", # Couleur du surlignage
-                    #    opacity=0.3,
-                    #    layer="below",
-                    #    line_width=0,
-                    #)
+
                     # Configurer le layout du graphique
                     fig_passants.update_layout(
-                        title_text="Pedestrians number along the day",
+                        title_text="Pedestrians count along the day",
                         xaxis_title="Time of day",
                         yaxis_title="Number of pedestrian detected",
                         bargap=0.2, # Espace entre les barres
@@ -606,7 +547,7 @@ with tab2 :
     st.subheader("Investigating Sidewalks’ Mobility and Improving it with Robots (ISMIR)” Project")
     st.markdown("Sidewalk delivery robots offer a promising solution for sustainable City Logistics. These robots can be deployed from hubs, retail locations, or even retrofitted vehicles to perform short-range deliveries, partially replacing traditional, less sustainable methods. The ISMIR project aims to develop a deeper, data-driven understanding of sidewalk robot operations in realistic urban settings and to explore sidewalk mobility through the lens of robotic navigation.")
     st.markdown("ISMIR is a collaborative project involving researchers from [The Division of Transport and Systems Analysis](https://www.kth.se/en/som/avdelningar/sek/transport-och-systemanalys-1.17211) and the [Integrated Transport Research Lab (ITRL)](https://www.itrl.kth.se/integrated-transport-research-lab-itrl-1.1081637)  at KTH Royal Institute of Technology (Stockholm, Sweden).")
-    st.link_button("Link to the project webpage", "https://www.digitalfutures.kth.se/project/investigating-sidewalks-mobility-and-improving-it-with-robots-ismir/")
+    st.markdown("The Investigating Sidewalks’ Mobility and Improving it with Robots (ISMIR)” project was funded by [Digital Futures](https://www.digitalfutures.kth.se/project/investigating-sidewalks-mobility-and-improving-it-with-robots-ismir/) and was carried out between 2023 and 2025.")
     
     st.markdown("##### Objective")
     st.markdown("Using empirical data from sidewalk robot trips between October, 2024 and March, 2025 on the KTH campus, the project involved:")
@@ -616,7 +557,7 @@ with tab2 :
 
     col_robot,col_Xing, col_Michele,col_Kaj,col_Sulthan,col_Jonas = st.columns(6, border=False)
     with col_robot:
-        st.image("data/pictures/Robot_photo.png",use_container_width=True)
+        st.image("data/pictures/Robot_photo.jpg",use_container_width=True)
         st.markdown("#### SVEA Robot")
         st.markdown("The SVEA robot used for sidewalk data collection and the mini network on KTH campus where the robot operates")
     with col_Xing:
