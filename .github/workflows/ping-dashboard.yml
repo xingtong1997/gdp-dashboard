@@ -7,6 +7,8 @@ on:
     # Vous pouvez ajuster cette heure.
     # Format CRON: Minute Heure Jour(mois) Mois Jour(semaine)
     - cron: '13 9 * * *'
+    # Ajoutez cette section pour un déclenchement manuel
+  workflow_dispatch:
 
 jobs:
   wake-up:
