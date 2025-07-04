@@ -6,9 +6,9 @@ on:
     # Planifie l'exécution tous les jours à 5h00 du matin (UTC)
     # Vous pouvez ajuster cette heure.
     # Format CRON: Minute Heure Jour(mois) Mois Jour(semaine)
-    - cron: '13 9 * * *'
+    - cron: '30 9 * * *'
     # Ajoutez cette section pour un déclenchement manuel
-  workflow_dispatch:
+  #workflow_dispatch:
 
 jobs:
   wake-up:
