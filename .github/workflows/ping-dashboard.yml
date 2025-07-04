@@ -1,0 +1,23 @@
+# Nom du workflow qui apparaîtra dans l'onglet "Actions"
+name: Wake Up My Streamlit App
+
+on:
+  schedule:
+    # Planifie l'exécution tous les jours à 5h00 du matin (UTC)
+    # Vous pouvez ajuster cette heure.
+    # Format CRON: Minute Heure Jour(mois) Mois Jour(semaine)
+    - cron: '0 5 * * *'
+
+jobs:
+  wake-up:
+    # Utilise la dernière version d'Ubuntu pour exécuter la tâche
+    runs-on: ubuntu-latest
+
+    steps:
+      # Étape 1: Simplement pour avoir accès aux outils de base
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Étape 2: La commande qui envoie le "ping" à votre application
+      - name: Ping the Streamlit app URL
+        run: curl -s "https://sidewalk-study-dashboard.streamlit.app/" > /dev/null
