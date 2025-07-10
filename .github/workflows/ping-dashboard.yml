@@ -22,4 +22,4 @@ jobs:
 
       # Étape 2: La commande qui envoie le "ping" à votre application
       - name: Ping the Streamlit app URL
-        run: curl -s "https://sidewalk-study-dashboard.streamlit.app/" > /dev/null
+        run: curl -s "https://sidewalk-study-dashboard.streamlit.app" > /dev/null
