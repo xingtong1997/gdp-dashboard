@@ -4,8 +4,8 @@ import folium
 from streamlit_folium import st_folium
 import plotly.express as px
 import os
-import ast # Pour parser la chaîne de liste de tuples en toute sécurité
-import traceback # Pour afficher les erreurs de parsing détaillées
+import ast #To safely parse string representations of Python literals (like lists of tuples).
+import traceback #To display detailed error information for debugging.
 import json
 import plotly.graph_objects as go
 import datetime
@@ -30,93 +30,90 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- Fonction de Parsing et Conversion des Coordonnées ---
+# --- Function to Parse and Convert Coordinates. ---
 def parse_and_convert_coordinates(coord_str):
     """
-    Parse une chaîne représentant une liste de tuples (lon, lat)
-    et la convertit en une liste de tuples (lat, lon).
-    Retourne une liste vide en cas d'erreur.
+    Parses a string representing a list of (lon, lat) tuples and converts it to a list of (lat, lon) tuples. Returns an empty list on error.
     """
     if not isinstance(coord_str, str) or not coord_str.strip():
         return []
     try:
-        # 1. Parser la chaîne en liste de tuples
-        # Utilise ast.literal_eval pour la sécurité (évite l'exécution de code arbitraire)
+        # 1. Parse the string into a list of tuples using ast.literal_eval for safety (avoids arbitrary code execution).
+        
         lon_lat_list = ast.literal_eval(coord_str)
 
-        # 2. Vérifier si le résultat est une liste
+        # 2. Verify that the result is a list.
         if not isinstance(lon_lat_list, list):
-            st.warning(f"Format de coordonnées non reconnu (pas une liste): {coord_str[:100]}...")
+            st.warning(f"Unrecognized coordinate format (not a list): {coord_str[:100]}...")
             return []
 
-        # 3. Convertir [(lon, lat), ...] en [(lat, lon), ...] et en float
+        # 3. Convert [(lon, lat), ...] to [(lat, lon), ...] and to float type.
         lat_lon_list = []
         for item in lon_lat_list:
             if isinstance(item, (list, tuple)) and len(item) == 2:
                 try:
-                    # Important : Conversion lon, lat -> lat, lon
+                    # Important : Convert lon, lat -> lat, lon
                     lat = float(item[1])
                     lon = float(item[0])
                     lat_lon_list.append((lat, lon))
                 except (ValueError, TypeError):
-                    st.warning(f"Coordonnées non numériques dans le tuple: {item} dans {coord_str[:100]}...")
-                    # Décider si on ignore juste ce point ou tout le segment
-                    continue # Ignore ce point et passe au suivant
+                    st.warning(f"Non-numeric coordinates in tuple: {item} in {coord_str[:100]}...")
+                    # Handle cases where coordinates are not numeric.
+                    continue 
             else:
-                 st.warning(f"Élément non conforme (pas un tuple/liste de 2) trouvé: {item} dans {coord_str[:100]}...")
-                 # Décider si on ignore juste ce point ou tout le segment
-                 continue # Ignore ce point
+                 st.warning(f"Non-compliant element (not a tuple/list of 2) found: {item} in  {coord_str[:100]}...")
+                 #Handle non-compliant elements (not a tuple/list of 2).
+                 continue 
 
         return lat_lon_list
 
     except (SyntaxError, ValueError, TypeError) as e:
-        st.error(f"Erreur de parsing de la chaîne de coordonnées: {coord_str[:100]}...")
-        # Afficher l'erreur détaillée dans les logs ou en mode debug
-        print(f"Erreur de parsing pour: {coord_str}")
+        st.error(f"Error parsing coordinate string: {coord_str[:100]}...")
+        # Print the detailed error for debugging purposes.
+        print(f"Parsing error for: {coord_str}")
         traceback.print_exc()
-        return [] # Retourne une liste vide en cas d'échec
+        return [] # Returns an empty list on failure.
 
-# --- Chargement des Données ---
+# --- Data Loading Function. ---
 @st.cache_data
 def load_data(path_data_path, unevenness_irregularity_per_segment_path):
-    # Charger les données du chemin (nouveau format: id, "[(lon, lat),...]")
-    processed_path_df = pd.DataFrame(columns=['segment_id', 'locations']) # Init df vide
+    # Initialize an empty DataFrame for the processed path data.
+    processed_path_df = pd.DataFrame(columns=['segment_id', 'locations'])
     try:
-        # Lire en spécifiant les noms de colonnes attendus
-        path_df = pd.read_csv(path_data_path, names=['segment_id', 'coordinates_str'], header=None) # Lire sans en-tête, nommer les colonnes
+        # Read the CSV file, specifying column names and no header.
+        path_df = pd.read_csv(path_data_path, names=['segment_id', 'coordinates_str'], header=None) 
 
-        # S'assurer que segment_id est une chaîne
+        # Ensure segment_id is a string type.
         path_df['segment_id'] = path_df['segment_id'].astype(str)
-        # Remplacer les NaN potentiels dans coordinates_str par des chaînes vides
+        # Replace potential NaN values in coordinates_str with empty strings.
         path_df['coordinates_str'] = path_df['coordinates_str'].fillna('')
 
 
         #st.write("Parsing segments coordinates...") # User Feedback
 
-        # Appliquer la fonction de parsing
-        # Note: parse_and_convert_coordinates retourne [] en cas d'erreur
+        # Apply the parsing function to the coordinates string column.
+
         path_df['locations'] = path_df['coordinates_str'].apply(parse_and_convert_coordinates)
 
-        # --- Section de rapport d'erreur améliorée ---
-        # Identifier les lignes où le parsing a échoué (locations est une liste vide)
-        # Exclure les lignes où la chaîne originale était déjà vide/NaN
+        # --- Enhanced Error Reporting Section. ---
+        # Identify rows where parsing failed (locations is an empty list) but the original string was not empty.
         failed_parsing_mask = (path_df['locations'].apply(len) == 0) & (path_df['coordinates_str'].str.strip() != '')
         failed_parsing_df = path_df[failed_parsing_mask]
 
         if not failed_parsing_df.empty:
-            st.error("Erreur de parsing des coordonnées pour les segments suivants :")
-            # Afficher max 10 erreurs pour ne pas surcharger
+            st.error("Coordinates parsing error for the following segments :")
+            # Display a maximum of 10 errors to avoid cluttering the UI.
             for index, row in failed_parsing_df.head(10).iterrows():
                 st.error(f"  - Segment ID: {row['segment_id']}")
-                # Afficher un extrait de la chaîne problématique
-                st.code(f"    Données (extrait): {row['coordinates_str'][:200]}...")
+                # Display an excerpt of the problematic string.
+                st.code(f"    Data: {row['coordinates_str'][:200]}...")
             if len(failed_parsing_df) > 10:
-                st.error(f"  ... et {len(failed_parsing_df) - 10} autres segments.")
-        # --- Fin Section de rapport d'erreur ---
+                st.error(f"  ... and {len(failed_parsing_df) - 10} other segments")
+        # --- End of Error Reporting Section. ---
 
-        # Filtrer les segments qui n'ont pas pu être parsés ou qui sont vides
+        # Filter out segments that could not be parsed or were originally empty.
         original_rows = len(path_df)
-        processed_path_df = path_df[path_df['locations'].apply(len) > 0][['segment_id', 'locations']].copy() # Garde seulement les succès
+        processed_path_df = path_df[path_df['locations'].apply(len) > 0][['segment_id', 'locations']].copy() 
 
         num_failed = len(failed_parsing_df)
         num_empty_original = original_rows - len(path_df[path_df['coordinates_str'].str.strip() != ''])
@@ -124,16 +121,16 @@ def load_data(path_data_path, unevenness_irregularity_per_segment_path):
 
         #st.write(f"Parsing finished: {num_successfully_parsed} segments loaded successfully.") User Feedback
         if num_failed > 0:
-             st.warning(f"{num_failed} segments ignorés en raison d'erreurs de parsing.")
+             st.warning(f"{num_failed} ignored segments due to parsing errors")
 
 
     except FileNotFoundError:
-        st.error(f"Erreur: Le fichier de chemin {path_data_path} n'a pas été trouvé.")
-        # processed_path_df reste le df vide initialisé
+        st.error(f"Error: The file path {path_data_path} was not found")
+        # processed_path_df remains the initialized empty df
     except Exception as e:
-        st.error(f"Erreur lors du chargement ou du traitement de {path_data_path}: {e}")
-        st.error(traceback.format_exc()) # Affiche l'erreur complète pour le débogage
-        # processed_path_df reste le df vide initialisé
+        st.error(f"Error while loading or processing  {path_data_path}: {e}")
+        st.error(traceback.format_exc()) # isplays the full error for debugging.
+        # processed_path_df remains the initialized empty df
 
     try:
         unevenness_irregularity_per_segment_df = pd.read_csv(unevenness_irregularity_per_segment_path)
@@ -141,165 +138,153 @@ def load_data(path_data_path, unevenness_irregularity_per_segment_path):
         unevenness_irregularity_per_segment_df = pd.DataFrame(columns=['segment_id', 'average_unevenness_index', 'average_irregularity_index'])
     return processed_path_df, unevenness_irregularity_per_segment_df
 
-  
+  # ---
+  # Function to Process Pedestrian Data.
+  # ---
 def process_pedestrian_data_per_quarter_hour(file_path):
     """
-    Charge les données de détection de piétons, les agrège par quart d'heure
-    en comptant les piétons uniques.
+    Loads pedestrian detection data, aggregates it by quarter-hour, and counts unique pedestrians.
 
     Args:
-        file_path (str): Chemin vers le fichier CSV. Le CSV doit avoir
-                         les colonnes 'timestamp' et 'pedestrian_ids'.
-                         'pedestrian_ids' doit être une chaîne représentant une liste
-                         d'IDs, ex: "[101, 102, 103]".
+        file_path (str): Path to the CSV file. The CSV must have 'timestamp' 
+                        and 'pedestrian_ids' columns. 'pedestrian_ids' must 
+                        be a string representing a list of IDs, e.g., "[101, 102, 103]".
 
     Returns:
-        pandas.DataFrame: Un DataFrame avec les colonnes 'timestamp_quarter'
-                          (début du quart d'heure) et 'unique_pedestrian_count'.
-                          Retourne un DataFrame vide en cas d'erreur.
+        pandas.DataFrame: A DataFrame with 'timestamp_quarter' 
+                        (start of the quarter-hour) and 'unique_pedestrian_count' 
+                        columns. Returns an empty DataFrame on error.
     """
     try:
         df = pd.read_csv(file_path, sep=';')
 
-        # Vérification des colonnes nécessaires
+        # Check for required columns.
         if 'time_rounded' not in df.columns or 'persons' not in df.columns:
-            # Dans Streamlit, on utiliserait st.error(), hors Streamlit, print() ou lever une exception
-            print(f"Erreur: Le fichier CSV '{file_path}' doit contenir les colonnes 'time_rounded' et 'persons'.")
+            # In Streamlit, one would use st.error(); outside Streamlit, print() or raise an exception.
+            print(f"Error: The CSV file '{file_path}' must contains the columns 'time_rund' and 'persons'.")
             return pd.DataFrame(columns=['timestamp_quarter', 'unique_pedestrian_count'])
 
-        # 1. Convertir la colonne 'timestamp' en objets datetime
+        # 1. Convert the 'timestamp' column to datetime objects and floor to the nearest 15 minutes.
         df['time_rounded'] = pd.to_datetime(df['time_rounded'], format="%H:%M")
         df['time_rounded'] = df['time_rounded'].dt.floor('15min').dt.time
-        # 2. Parser la colonne 'pedestrian_ids' (chaîne) en listes Python d'IDs
+        # 2. Parse the 'pedestrian_ids' column (string) into Python lists of IDs.
         def parse_id_list_from_string(id_list_str):
             if pd.isna(id_list_str) or not isinstance(id_list_str, str) or not id_list_str.strip():
-                return [] # Retourne une liste vide si la chaîne est vide, NaN ou pas une chaîne
+                return [] # Returns an empty list if the string is empty, NaN, or not a string.
             try:
-                # ast.literal_eval est plus sûr que eval()
                 ids = ast.literal_eval(id_list_str)
-                # S'assurer que c'est une liste et que les IDs sont (par exemple) des entiers
+                # Ensure it's a list and the IDs are, for example, integers.
                 if isinstance(ids, list):
-                    return [int(pid) for pid in ids] # ou str(pid) si vos IDs sont des chaînes
+                    return [int(pid) for pid in ids] # or str(pid) if your IDs are strings
                 return []
             except (ValueError, SyntaxError, TypeError):
-                # Gérer les chaînes mal formées
+                # Handle malformed strings.
                 return []
         
         df['parsed_ids'] = df['persons'].apply(parse_id_list_from_string)
 
-        # 3. Mettre 'timestamp' comme index pour la fonction resample
+        # 3. Set 'timestamp' as the index for the resample function.
         df = df.set_index('time_rounded')
 
-        # 4. & 5. Regrouper par quart d'heure ('15T') et agréger
-        # Définir la fonction d'agrégation pour compter les IDs uniques 
+        # 4. & 5. Group by quarter-hour ('15T') and aggregate.
         def aggregate_unique_ids(series_of_lists_of_ids):
-            # series_of_lists_of_ids contient toutes les listes 'parsed_ids' pour un quart d'heure donné
+            # series_of_lists_of_ids contains all 'parsed_ids' lists for a given quarter-hour.
             if series_of_lists_of_ids.empty:
                 return 0
              
             combined_list = []
             for id_list in series_of_lists_of_ids:
-                combined_list.extend(id_list) # Concaténer toutes les listes
+                combined_list.extend(id_list) # Concatenate all lists
             
             if not combined_list:
                 return 0
             
-            #unique_ids = set(combined_list) # Enlever les doublons
-            return len(combined_list)         # Compter les uniques
+            #unique_ids = set(combined_list) # Remove duplicates if wanted
+            return len(combined_list)         # Count
         
-        # 3. Regrouper par la colonne de quart d'heure fournie
+        # 6. Group by the provided quarter-hour column.
         quarter_hour_summary = df.groupby(['segment_id','time_rounded'])['parsed_ids'].apply(aggregate_unique_ids)
 
-        # Renommer la série résultante et la transformer en DataFrame
+        # Rename the resulting series and convert it to a DataFrame.
         quarter_hour_summary_df = quarter_hour_summary.rename('unique_pedestrian_count').reset_index()
         quarter_hour_summary_df.rename(columns={'time_rounded': 'timestamp_quarter'}, inplace=True)
 
-        # S'assurer que les résultats sont triés par temps pour le graphique
+        # Ensure the results are sorted by time for plotting.
         quarter_hour_summary_df = quarter_hour_summary_df.sort_values(by=['segment_id','timestamp_quarter'])
         return quarter_hour_summary_df
 
     except FileNotFoundError:
-        print(f"Erreur: Fichier non trouvé à l'emplacement '{file_path}'.")
+        print(f"Error: File not found here: '{file_path}'.")
         return pd.DataFrame(columns=['timestamp_quarter', 'unique_pedestrian_count'])
     except Exception as e:
-        print(f"Une erreur est survenue lors du traitement du fichier: {e}")
-        # Pour un débogage plus détaillé dans un environnement de développement :
+        print(f"An error has ocurred during the file processing {e}")
+        # For more detailed debugging in a development environment:
         # import traceback
         # traceback.print_exc()
         return pd.DataFrame(columns=['timestamp_quarter', 'unique_pedestrian_count'])
 
 
-# --- Chemins vers vos fichiers CSV ---
-PATH_CSV_PATH = 'data/segments.csv' # Votre fichier avec id, "[(lon, lat),...]"
+# --- Paths to your CSV files. ---
+PATH_CSV_PATH = 'data/segments.csv' # Your file with id, "[(lon, lat),...]".
 UNEVENNESS_IRREGULARITY_PER_SEGMENT_PATH = 'data/unevenness_irregularity_per_segment.csv'
 CHEMIN_FICHIER_PASSANTS = 'data/ExperimentData_quentin.csv'
 
 path_df, unevenness_irregularity_per_segment_df = load_data(PATH_CSV_PATH, UNEVENNESS_IRREGULARITY_PER_SEGMENT_PATH)
 Pedestrian_df = process_pedestrian_data_per_quarter_hour(CHEMIN_FICHIER_PASSANTS)
 
-# --- Interface Utilisateur ---
+# --- User Interface. ---
 st.title("📊 Sidewalk Mobility Data Dashboard")
 st.markdown("Data visualization of sidewalk usage and caracteristics")
 
 if path_df.empty:
-    st.warning("Impossible d'afficher la carte car les données du chemin n'ont pas pu être chargées ou parsées.")
+    st.warning("Unable to display map due to path data unable to be processed or loaded.")
     st.stop()
 
-# --- Sélection du Segment ---
-# Les IDs sont maintenant bien des strings grâce à la correction dans load_data
+# --- Segment Selection. ---
 unique_ids_str = path_df['segment_id'].unique().tolist()
 
-# Définir une fonction clé pour trier numériquement (gère entiers et potentiellement flottants)
+# Define a key function for robust numerical sorting (handles integers and potentially floats).
 def robust_num_key(item_str):
     try:
-        # Essayer de convertir en flottant pour la comparaison (gère entiers et décimaux)
+        # Try converting to float for comparison (handles integers and decimals).
         return float(item_str)
     except ValueError:
-        # Si ce n'est pas un nombre, le placer à la fin lors du tri
-        # On retourne l'infini positif pour qu'il soit classé après tous les nombres.
-        # Vous pourriez aussi retourner une valeur spécifique ou lever une erreur si
-        # tous les IDs sont censés être numériques.
         return float('inf')
 
-# Trier les IDs (qui sont des strings) en utilisant la clé numérique
+# Sort the string IDs using the numerical key.
 sorted_ids = sorted(unique_ids_str, key=robust_num_key)
 
-#création des deux onglets, le premier étant context et le deuxième celu qui va générer les données
+# Create two tabs, the first for Data and the second for Project details.
 tab1, tab2 = st.tabs(["# Data", "# Project Background"])
 
 
 
-#Onglets d'affichage des données
+# Data display tab.
 with tab1 :
 
-    # --- Affichage Principal (Carte et Données) ---
+    # --- Main Display (Map and Data). ---
     col_map, col_data = st.columns([1,1.3], border=True)
 
     with col_map:
         
-        # Créer les options pour le selectbox
-        segment_options = ["Overview"] + sorted_ids # Utilise la liste triée numériquement
+        # Create options for the selectbox.
+        segment_options = ["Overview"] + sorted_ids # Use the numerically sorted list.
 
         selected_segment_id = st.selectbox("Select a segment to display infos :", options=segment_options)
         
-        # --- **NOUVEAU : Préparation de la Palette et Mapping de Couleurs** ---
-        # Utiliser les IDs triés pour une assignation stable si l'ordre importe peu,
-        # sinon utiliser unique_ids_str directement si l'ordre original d'apparition doit dicter la couleur.
-        # Utilisons sorted_ids pour la cohérence avec le selectbox.
+
         ids_for_colors = sorted_ids
 
-        # Définir une palette de couleurs (ajoutez/modifiez selon vos goûts)
-        # Couleurs de https://colorbrewer2.org/#type=qualitative&scheme=Paired&n=10
+        # Colors from https://colorbrewer2.org/#type=qualitative&scheme=Paired&n=10
         color_palette = ['#a83500','#1f78b4','#50b800','#0a6100','#7d4c2c','#e31a1c','#129778','#ff7f00','#781297','#6a3d9a']
         num_colors = len(color_palette)
 
-        # Créer un dictionnaire mappant chaque segment_id à une couleur
+        # Create a dictionary mapping each segment_id to a color.
         segment_color_map = {}
         for i, seg_id in enumerate(ids_for_colors):
-            # Assigner les couleurs de manière cyclique si plus d'IDs que de couleurs
+            # Assign colors cyclically if there are more IDs than colors.
             color_index = i % num_colors
             segment_color_map[seg_id] = color_palette[color_index]
-        # --- FIN NOUVEAU ---
 
         test = st.pills("test", "Display segments number", label_visibility="collapsed")
 
@@ -307,40 +292,37 @@ with tab1 :
 
         map_center = [59.346639,18.072167]
 
-        m = folium.Map(location=map_center, zoom_start=16) # Centre/zoom par défaut
+        m = folium.Map(location=map_center, zoom_start=16) # Default center/zoom.
 
-        # Afficher tous les segments sur la carte
+        # Display all segments on the map.
         if not path_df.empty:
-            # Itérer sur les lignes du DataFrame traité
+            # Iterate over the rows of the processed DataFrame.
             for index, segment_row in path_df.iterrows():
                 segment_id = segment_row['segment_id']
-                locations = segment_row['locations'] # Récupère la liste de (lat, lon)
+                locations = segment_row['locations'] # Get the list of (lat, lon).
 
-                if len(locations) >= 2: # Besoin d'au moins 2 points pour une ligne
+                if len(locations) >= 2: 
                     line_color = "#FF0000" if segment_id == selected_segment_id else "#007bff"
                     if selected_segment_id == "Overview" : 
-                        line_color = segment_color_map.get(segment_id, '#808080') # Gris si ID non trouvé
+                        line_color = segment_color_map.get(segment_id, '#808080') # Gray if ID not found.
                     line_weight = 10 if segment_id == selected_segment_id else 6
                     if test == "Display segments number":
                         folium.PolyLine(
-                            locations=locations, # Utilise directement la liste de (lat, lon)
+                            locations=locations, 
                             color=line_color,
                             weight=line_weight,
                             opacity=0.8,
-                            # Remplacer le tooltip simple par un Tooltip permanent
                             tooltip=folium.Tooltip(
-                                f"{segment_id}", # Affiche juste l'ID
-                                permanent=True,   # Rend le tooltip toujours visible
-                                direction='center', # Essaye de le centrer (autres options: 'auto', 'top', 'bottom', 'left', 'right')
-                                sticky=False,     # Empêche le tooltip de suivre la souris
-                                opacity=0.7,      # Un peu transparent pour ne pas masquer la ligne
-                                # Optionnel: classe CSS pour styler plus tard
-                                # className='folium-permanent-tooltip'
+                                f"{segment_id}", 
+                                permanent=True,   
+                                direction='center', 
+                                sticky=False,     
+                                opacity=0.7,      
                             )
                         ).add_to(m)
                     else : 
                         folium.PolyLine(
-                            locations=locations, # Utilise directement la liste de (lat, lon)
+                            locations=locations, 
                             color=line_color,
                             weight=line_weight,
                             opacity=0.8,
@@ -350,11 +332,11 @@ with tab1 :
                 elif len(locations) == 1:
                     folium.Marker(
                         location=locations[0],
-                        tooltip=f"Segment ID: {segment_id} (point unique)",
+                        tooltip=f"Segment ID: {segment_id} (single point)",
                         icon=folium.Icon(color='gray', icon='info-sign')
                     ).add_to(m)
 
-        # Afficher la carte
+        # Display map
         map_data = st_folium(m, width='100%', height=600)
 
     with col_data:
@@ -374,52 +356,50 @@ with tab1 :
                 #with col_graph:
                     st.subheader("Indices of unevenness and irregularity across sidewalks (excluding crossings)")
 
-                    # --- Création de la Figure avec Deux Axes Y ---
+                    # --- Creation of the Figure with Two Y-Axes. ---
                     fig_combined = go.Figure()
-                    # 1. Ajouter la trace pour l'Irrégularité (Axe Y Primaire - Gauche)
+                    # 1. Add the trace for Unevenness (Primary Y-Axis - Left).
                     fig_combined.add_trace(go.Scatter(
                         x=unevenness_irregularity_per_segment_df['segment_id'],
                         y=unevenness_irregularity_per_segment_df['average_unevenness_index'],
-                        name='Unevenness', # Nom dans la légende
-                        yaxis='y1',         # Associer à l'axe y1 (par défaut)
-                        line=dict(color='royalblue') # Couleur spécifique
+                        name='Unevenness', 
+                        yaxis='y1',         
+                        line=dict(color='royalblue') 
                     ))
 
-                    # 2. Ajouter la trace pour la Largeur (Axe Y Secondaire - Droite)
+                    # 2. Add the trace for Irregularity (Secondary Y-Axis - Right).
                     fig_combined.add_trace(go.Scatter(
                         x=unevenness_irregularity_per_segment_df['segment_id'],
                         y=unevenness_irregularity_per_segment_df['average_irregularity_index'],
-                        name='irregularity', # Nom dans la légende
-                        yaxis='y2',        # Important: Associer à l'axe y2
-                        line=dict(color='darkorange') # Couleur spécifique
+                        name='irregularity', 
+                        yaxis='y2',        
+                        line=dict(color='darkorange') 
                     ))
 
-                    # 3. Configurer le Layout (Titres, Axes, Plage dynamique)
+                    # 3. Configure the Layout (Titles, Axes, dynamic range).
                     fig_combined.update_layout(
                         xaxis_title="segment id",
-                        # Configuration Axe Y Primaire (Gauche) pour l'Irrégularité
+                        # Primary Y-Axis Configuration (Left) for Unevenness.
                         yaxis=dict(
                             title="unevenness",
                             
                             tickfont=dict(color="royalblue"),
-                            side='left', # Positionner à gauche
-                            # Vous pourriez aussi rendre cet axe ajustable avec des widgets
+                            side='left', # Position on the left.
                             range=[0, 1],
                             showgrid=False
                         ),
-                        # Configuration Axe Y Secondaire (Droite) pour la Largeur
+                        # Secondary Y-Axis Configuration (Right) for Irregularity.
                         yaxis2=dict(
                             title="irregularity",
                             tickfont=dict(color="darkorange"),
-                            side='right',       # Positionner à droite
-                            overlaying="y",    # Superposer à l'axe Y principal (partage l'axe X)
-                            # *** Appliquer la plage définie par le widget ***
+                            side='right',       # Position on the right.
+                            overlaying="y",    # Overlay on the main Y-axis (shares the X-axis).
                         ),
-                        legend=dict(x=0.1, y=1.1, orientation="h"), # Position de la légende
-                        margin=dict(l=50, r=50, t=80, b=50) # Marges
+                        legend=dict(x=0.1, y=1.1, orientation="h"), 
+                        margin=dict(l=50, r=50, t=80, b=50) 
                     )
 
-                    # Afficher le graphique combiné
+                    # Display the combined chart.
                     st.plotly_chart(fig_combined, use_container_width=True)
                 
                 #with col_details:
@@ -448,8 +428,7 @@ with tab1 :
                     yaxis=dict(
                         title="Absolute slope",
                         tickfont=dict(color=Graph_color),
-                        side='left', # Positionner à gauche
-                        # Vous pourriez aussi rendre cet axe ajustable avec des widgets
+                        side='left', # Position on the left
                         range=[0, 0.07]
                     )
                     )
@@ -461,7 +440,6 @@ with tab1 :
             
             with tab_pedestrian:
                 fig_passants = go.Figure()
-                    # Ajouter la trace principale des barres (toutes les données de la journée)
                 pedestrian_overview = Pedestrian_df.groupby('timestamp_quarter')['unique_pedestrian_count'].sum()
                 pedestrian_overview = pedestrian_overview.rename('total_pedestrian').reset_index()
                 #st.dataframe(pedestrian_overview)
@@ -469,22 +447,18 @@ with tab1 :
                     x=pedestrian_overview['timestamp_quarter'],
                     y=pedestrian_overview['total_pedestrian'],
                     name='Number of pedestrian',
-                    marker_color='rgb(26, 118, 255)' # Couleur bleue pour les barres
+                    marker_color='rgb(26, 118, 255)' 
                     ))
                 fig_passants.update_layout(
                         title_text="Pedestrians count along the day",
                         xaxis_title="Time of day",
                         yaxis_title="Number of pedestrian detected",
-                        bargap=0.2, # Espace entre les barres
-                        # Optionnel: forcer l'affichage de tous les timestamps sur l'axe X si besoin
-                        # xaxis=dict(type='category') # Peut aider si les timestamps ne sont pas réguliers
+                        bargap=0.2, # space between the bars
+                        
                     )
                 st.plotly_chart(fig_passants, use_container_width=True)
 
-        # Le reste de la logique pour afficher les détails (graphiques, etc.)
-        # reste basé sur sensor_df et selected_segment_id.
-        # Il faut s'assurer que le fichier sensor_data.csv existe et
-        # contient une colonne 'segment_id' qui correspond aux IDs dans segments.csv
+        
 
         else :
             
@@ -505,9 +479,8 @@ with tab1 :
                     st.metric("## Average pedestrian speed :", str(round(ped_speed_per_segment[int(selected_segment_id)-1]["average pedestrian speed"],3))+" m/s",label_visibility="collapsed")
                     
                     st.metric("Average effective width :", str(round(width_per_segment[int(selected_segment_id)-1]["average effective width"],3))+" m")
-                    with st.popover("Average minimum effective width :"):
-                        st.markdown("Details about Average effective width")
-                    st.metric("Average minimum effective width :", str(round(width_per_segment[int(selected_segment_id)-1]["average minimum effective width"],3))+" m",label_visibility="collapsed")
+                    
+                    st.metric("Average minimum effective width :", str(round(width_per_segment[int(selected_segment_id)-1]["average minimum effective width"],3))+" m")
 
                 else:
                     st.info("No data is available for this specific segment")
@@ -516,32 +489,31 @@ with tab1 :
                 st.subheader("Pedestrian count over the day on the selected segment")
                 
                 if Pedestrian_df.empty:
-                    st.warning("Aucune donnée de passant à afficher. Vérifiez le fichier CSV ou les erreurs ci-dessus.")
+                    st.warning("No pedestrian data to display. Please verify the CSV file or the errors")
                 else:
-                    # Créer la figure Plotly
+                    # Display the combined chart.
                     fig_passants = go.Figure()
-                    # Ajouter la trace principale des barres (toutes les données de la journée)
+                    # Add the main trace for the bars (all data for the day).
                     fig_passants.add_trace(go.Bar(
                         x=Pedestrian_df.loc[Pedestrian_df['segment_id'] == int(selected_segment_id)]['timestamp_quarter'],
                         y=Pedestrian_df.loc[Pedestrian_df['segment_id'] == int(selected_segment_id)]['unique_pedestrian_count'],
                         name='Number of pedestrian',
-                        marker_color='rgb(26, 118, 255)' # Couleur bleue pour les barres
+                        marker_color='rgb(26, 118, 255)' 
                     ))
 
-                    # Configurer le layout du graphique
+                    # Configure the chart layout.
                     fig_passants.update_layout(
                         title_text="Pedestrians count along the day",
                         xaxis_title="Time of day",
                         yaxis_title="Number of pedestrian detected",
-                        bargap=0.2, # Espace entre les barres
-                        # Optionnel: forcer l'affichage de tous les timestamps sur l'axe X si besoin
-                        # xaxis=dict(type='category') # Peut aider si les timestamps ne sont pas réguliers
+                        bargap=0.2, # space between bars
+                        
                     )
                     st.plotly_chart(fig_passants, use_container_width=True)
 
 
         
-#onglet d'affichage du contexte
+# Project details display tab.
 with tab2 :
 
     st.subheader("Investigating Sidewalks’ Mobility and Improving it with Robots (ISMIR)” Project")
