@@ -10,7 +10,7 @@ import json
 import plotly.graph_objects as go
 import datetime
 
-
+   
 #Json files importation
 with open("data/irr_event_coordinates.json", mode="r", encoding="utf-8") as irr_event_coordinates:
     irr_event_coordinates = json.load(irr_event_coordinates)
