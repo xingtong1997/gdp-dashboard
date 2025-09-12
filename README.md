@@ -18,3 +18,4 @@ A simple Streamlit app showing the GDP of different countries in the world.
    $ streamlit run streamlit_app.py
    ```
  
+Remember to make some edits every 60 days to prevent the wakeup action from being disabled
