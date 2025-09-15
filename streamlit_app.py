@@ -234,7 +234,7 @@ Pedestrian_df = process_pedestrian_data_per_quarter_hour(CHEMIN_FICHIER_PASSANTS
 
 # --- User Interface. ---
 st.title("📊 Sidewalk Mobility Data Dashboard")
-st.markdown("Data visualization of sidewalk usage and caracteristics")
+st.markdown("Data visualization of sidewalk usage and characteristics")
 
 if path_df.empty:
     st.warning("Unable to display map due to path data unable to be processed or loaded.")
