@@ -404,7 +404,7 @@ with tab1 :
                 
                 #with col_details:
                     st.subheader("Graph explanation")
-                    st.text("The graph illustrates the indices of unevenness and irregularity across nine sidewalk segments, with the irregularity events marked as red points. The unevenness index, which ranges from 0 to 1, remains relatively consistent across most segments. Segment 1 shows the highest unevenness, primarily due to the presence of broken and uneven bricks.")
+                    st.text("The graph illustrates the indices of unevenness and irregularity across nine sidewalk segments. The unevenness index is a non-negative continuous value, with values closer to 0 reflecting a smoother and more stable surface, and larger values representing sidewalks with greater long-wavelength unevenness. Like the unevenness index, the irregularity index is a non-negative continuous value, where values closer to 0 indicate smoother, less disrupted sidewalks, and larger values indicate more severe or more spatially extensive irregularities.")
 
 
             with tab_abslop:
